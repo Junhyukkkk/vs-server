@@ -44,9 +44,7 @@ out/
 ### Kotlin build cache ###
 buildSrc/.kotlin/
 
-### API Client Generation ###
-swagger.json
-generated-api-client/
+### Node ###
 node_modules/
 package-lock.json
 

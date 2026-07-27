@@ -37,7 +37,6 @@ app:
     secure: false
   cors:
     allowed-origins:
-      - https://vs.io.kr
       - http://localhost:3000
       - http://127.0.0.1:3000
     allowed-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS

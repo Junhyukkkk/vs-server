@@ -42,7 +42,7 @@ gemini:
   enabled: ${GEMINI_ENABLED:false}
 
 # 오늘의 추천 투표 설정 권한 (운영진 user id 목록)
+# ADMIN_USER_IDS에 콤마로 구분해 지정한다. 예: ADMIN_USER_IDS=1,2
+# 비워두면 아무도 추천 투표를 설정할 수 없다(권한 없음으로 거부).
 admin:
-  user-ids:
-    - 7
-    - 260
+  user-ids: ${ADMIN_USER_IDS:}
