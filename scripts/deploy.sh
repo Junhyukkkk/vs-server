@@ -132,7 +132,9 @@ fi
 
 # Firebase + GCP 서비스 계정 설정 (선택적)
 # 이 파일은 Firebase와 Vertex AI(Gemini) 인증에 모두 사용됨
-if [ -f "/home/ubuntu/app/secrets/firebase-service-account.json" ]; then
+# -s: 파일이 존재하고 내용이 비어있지 않을 때만. 빈 파일을 마운트하면
+# Firebase 초기화가 파싱에 실패해 앱이 기동하지 못한다.
+if [ -s "/home/ubuntu/app/secrets/firebase-service-account.json" ]; then
   DOCKER_OPTS+=(
     -v /home/ubuntu/app/secrets/firebase-service-account.json:/app/secrets/firebase-service-account.json:ro
     -e FIREBASE_SERVICE_ACCOUNT_PATH=/app/secrets/firebase-service-account.json
