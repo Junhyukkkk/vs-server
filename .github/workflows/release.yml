@@ -3,6 +3,9 @@ name: Create Release
 on:
   push:
     branches: [ main ]
+  # Actions 탭에서 브랜치를 골라 수동 실행할 수 있다.
+  # 인프라 세팅 중 배포를 반복 시도할 때 main 머지 없이 돌리기 위한 용도.
+  workflow_dispatch:
 
 permissions:
   contents: write

@@ -64,27 +64,13 @@ dependencies {
 
 	compileOnly(Dependencies.Lombok.LOMBOK)
 	annotationProcessor(Dependencies.Lombok.LOMBOK)
+
+	// 테스트 소스는 현재 없지만, 추가할 때 바로 쓸 수 있도록 기본 스타터는 남겨둔다.
 	testImplementation(Dependencies.SpringBoot.TEST)
 	testImplementation(Dependencies.SpringSecurity.TEST)
 	testRuntimeOnly(Dependencies.Test.JUNIT_LAUNCHER)
-
-	// Testcontainers (for Postgres-specific integration tests)
-	testImplementation("org.testcontainers:testcontainers:1.21.3")
-	testImplementation("org.testcontainers:junit-jupiter:1.21.3")
-	testImplementation("org.testcontainers:postgresql:1.21.3")
-
-	// Spring Boot official Testcontainers support
-	testImplementation("org.springframework.boot:spring-boot-testcontainers:3.5.11")
 }
 
 tasks.test {
 	useJUnitPlatform()
-	outputs.upToDateWhen { false }
-	outputs.cacheIf { false }
-
-	// 통합 테스트는 Testcontainers 기반 실제 PostgreSQL을 사용한다.
-	// Docker가 없는 환경에서는 -PskipIntegrationTests로 제외한다.
-	if (project.hasProperty("skipIntegrationTests")) {
-		exclude("**/*IntegrationTest.class")
-	}
 }
