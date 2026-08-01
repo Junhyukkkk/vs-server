@@ -31,7 +31,11 @@ public class JwtProvider {
 
     @PostConstruct
     public void init() {
-        byte[] keyBytes = Decoders.BASE64.decode(jwtProperties.secret());
+        // 시크릿이 GitHub Actions → SSH → 컨테이너 환경변수를 거치는 동안
+        // 줄바꿈이 공백으로 바뀌어 섞여 들어올 수 있다.
+        // 공백은 base64에서 의미가 없으므로 제거한 뒤 디코딩한다.
+        String secret = jwtProperties.secret().replaceAll("\\s", "");
+        byte[] keyBytes = Decoders.BASE64.decode(secret);
         this.secretKey = Keys.hmacShaKeyFor(keyBytes);
     }
 

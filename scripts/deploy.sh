@@ -201,7 +201,7 @@ for i in $(seq 1 "$HEALTH_TIMEOUT_SECONDS"); do
 
   if [ "$RUNNING" != "true" ]; then
     echo ">>> 새 컨테이너가 실행 중이 아닙니다. 롤백합니다." >&2
-    docker logs --tail=100 "$NEW_CONTAINER" >&2 || true
+    docker logs --tail=200 "$NEW_CONTAINER" >&2 || true
     cleanup_new_container
     exit 1
   fi
@@ -221,7 +221,7 @@ done
 
 if [ "$HEALTH_PASSED" != "true" ]; then
   echo ">>> 헬스체크 타임아웃. 롤백합니다." >&2
-  docker logs --tail=100 "$NEW_CONTAINER" >&2 || true
+  docker logs --tail=200 "$NEW_CONTAINER" >&2 || true
   cleanup_new_container
   exit 1
 fi
