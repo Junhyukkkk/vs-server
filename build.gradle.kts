@@ -33,6 +33,9 @@ dependencies {
 	implementation(Dependencies.SpringBoot.OAUTH2_CLIENT)
 	implementation(Dependencies.SpringBoot.WEBSOCKET)
 
+	// Thymeleaf (운영자용 어드민 페이지)
+	implementation(Dependencies.SpringBoot.THYMELEAF)
+
 	// Jwt
 	implementation(Dependencies.Jwt.API)
 	runtimeOnly(Dependencies.Jwt.IMPL)

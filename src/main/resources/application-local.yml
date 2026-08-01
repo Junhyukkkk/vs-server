@@ -13,6 +13,8 @@ spring:
     show-sql: true
   flyway:
     enabled: true
+  thymeleaf:
+    cache: false
   security:
     oauth2:
       client:

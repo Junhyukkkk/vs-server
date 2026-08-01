@@ -17,7 +17,9 @@ public class SecurityPaths {
             "/oauth2/authorization/**",
             "/login/oauth2/code/**",
             "/api/home/**",
-            "/api/track/**"
+            "/api/track/**",
+            // 어드민 로그인 안내 페이지. (실제 어드민 기능은 /admin/votes 이하이며 인증 + admin.user-ids 검사를 거친다)
+            "/admin/login"
     );
 
     /**
