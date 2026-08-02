@@ -8,9 +8,11 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.util.matcher.AnyRequestMatcher;
 import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
@@ -45,11 +47,18 @@ public class SecurityConfig {
                         .successHandler(oAuth2LoginSuccessHandler)
                         .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService)))
                 .exceptionHandling(exception -> exception
-                        .authenticationEntryPoint((request, response, authException) -> {
-                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                            response.setContentType("application/json;charset=UTF-8");
-                            response.getWriter().write("{\"code\":\"AUTH_001\",\"message\":\"인증이 필요합니다.\"}");
-                        })
+                        // 어드민은 브라우저로 접근하므로 JSON 401 대신 로그인 안내 페이지로 보낸다.
+                        .defaultAuthenticationEntryPointFor(
+                                new LoginUrlAuthenticationEntryPoint("/admin/login"),
+                                request -> request.getRequestURI().startsWith("/admin"))
+                        // 나머지(=API)는 기존과 동일하게 JSON 401. AnyRequestMatcher를 마지막에 두어 fallback으로 쓴다.
+                        .defaultAuthenticationEntryPointFor(
+                                (request, response, authException) -> {
+                                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                                    response.setContentType("application/json;charset=UTF-8");
+                                    response.getWriter().write("{\"code\":\"AUTH_001\",\"message\":\"인증이 필요합니다.\"}");
+                                },
+                                AnyRequestMatcher.INSTANCE)
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 // 인앱 브라우저(WebView) 로그인 진입은 구글로 리다이렉트되기 전에 외부 브라우저로 우회시킨다.

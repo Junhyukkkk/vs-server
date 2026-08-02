@@ -80,18 +80,11 @@ done
 
 log "현재: ${CURRENT:-없음} → 새로운: $NEW_CONTAINER"
 
-# ECR 이미지인 경우 credential helper로 인증 설정
-if [[ "$IMAGE" == *".dkr.ecr."* ]]; then
-  ECR_REGISTRY=$(echo "$IMAGE" | cut -d'/' -f1)
-
-  if ! command -v docker-credential-ecr-login &>/dev/null; then
-    log "ECR credential helper 설치 중..."
-    sudo apt-get install -y amazon-ecr-credential-helper
-  fi
-
-  mkdir -p ~/.docker
-  echo "{\"credHelpers\":{\"${ECR_REGISTRY}\":\"ecr-login\"}}" > ~/.docker/config.json
-  log "ECR credential helper 설정 완료: $ECR_REGISTRY"
+# GHCR 이미지인 경우 로그인. 패키지가 public이면 인증 없이도 pull되므로
+# 자격증명이 없을 때는 조용히 건너뛰고 익명 pull을 시도한다.
+if [[ "$IMAGE" == ghcr.io/* ]] && [ -n "${GHCR_TOKEN:-}" ]; then
+  log "GHCR 로그인: ${GHCR_USERNAME:-unknown}"
+  echo "$GHCR_TOKEN" | docker login ghcr.io -u "${GHCR_USERNAME:?GHCR_USERNAME이 필요합니다}" --password-stdin
 fi
 
 # 새 이미지 pull
@@ -124,9 +117,24 @@ DOCKER_OPTS=(
   -e GOOGLE_OAUTH_CLIENT_SECRET
 )
 
+# 프론트엔드 도메인이 확정된 경우에만 CORS 허용 목록을 덮어쓴다.
+# 비어 있으면 application-prod.yml의 기본값(localhost)이 그대로 쓰인다.
+if [ -n "${APP_CORS_ALLOWED_ORIGINS:-}" ]; then
+  DOCKER_OPTS+=(-e APP_CORS_ALLOWED_ORIGINS)
+  log "CORS 허용 도메인 설정됨"
+fi
+
+# 추천 투표 설정 권한을 가진 user id 목록 (콤마 구분)
+if [ -n "${ADMIN_USER_IDS:-}" ]; then
+  DOCKER_OPTS+=(-e ADMIN_USER_IDS)
+  log "운영진 user id 설정됨"
+fi
+
 # Firebase + GCP 서비스 계정 설정 (선택적)
 # 이 파일은 Firebase와 Vertex AI(Gemini) 인증에 모두 사용됨
-if [ -f "/home/ubuntu/app/secrets/firebase-service-account.json" ]; then
+# -s: 파일이 존재하고 내용이 비어있지 않을 때만. 빈 파일을 마운트하면
+# Firebase 초기화가 파싱에 실패해 앱이 기동하지 못한다.
+if [ -s "/home/ubuntu/app/secrets/firebase-service-account.json" ]; then
   DOCKER_OPTS+=(
     -v /home/ubuntu/app/secrets/firebase-service-account.json:/app/secrets/firebase-service-account.json:ro
     -e FIREBASE_SERVICE_ACCOUNT_PATH=/app/secrets/firebase-service-account.json
@@ -193,7 +201,7 @@ for i in $(seq 1 "$HEALTH_TIMEOUT_SECONDS"); do
 
   if [ "$RUNNING" != "true" ]; then
     echo ">>> 새 컨테이너가 실행 중이 아닙니다. 롤백합니다." >&2
-    docker logs --tail=100 "$NEW_CONTAINER" >&2 || true
+    docker logs --tail=200 "$NEW_CONTAINER" >&2 || true
     cleanup_new_container
     exit 1
   fi
@@ -213,7 +221,7 @@ done
 
 if [ "$HEALTH_PASSED" != "true" ]; then
   echo ">>> 헬스체크 타임아웃. 롤백합니다." >&2
-  docker logs --tail=100 "$NEW_CONTAINER" >&2 || true
+  docker logs --tail=200 "$NEW_CONTAINER" >&2 || true
   cleanup_new_container
   exit 1
 fi

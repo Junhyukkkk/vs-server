@@ -12,6 +12,7 @@ import com.ject.vs.user.exception.UserErrorCode;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.DecodingException;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
@@ -31,8 +32,28 @@ public class JwtProvider {
 
     @PostConstruct
     public void init() {
-        byte[] keyBytes = Decoders.BASE64.decode(jwtProperties.secret());
-        this.secretKey = Keys.hmacShaKeyFor(keyBytes);
+        this.secretKey = Keys.hmacShaKeyFor(decodeSecret(jwtProperties.secret()));
+    }
+
+    /**
+     * APP_JWT_SECRET은 base64로 인코딩된 값을 기대한다.
+     *
+     * <p>다만 값이 GitHub Actions → SSH → 컨테이너 환경변수를 거치는 동안
+     * 줄바꿈이 공백으로 바뀌어 섞여 들어올 수 있고, 생성 방식에 따라
+     * URL-safe base64({@code -}, {@code _})로 전달되기도 한다.
+     * 둘 다 표준 base64와 동일한 바이트열을 의미하므로 정규화한 뒤 디코딩한다.
+     */
+    private byte[] decodeSecret(String raw) {
+        String normalized = raw.replaceAll("\\s", "")
+                .replace('-', '+')
+                .replace('_', '/');
+        try {
+            return Decoders.BASE64.decode(normalized);
+        } catch (DecodingException e) {
+            throw new IllegalStateException(
+                    "APP_JWT_SECRET이 base64 형식이 아닙니다. "
+                            + "openssl rand -base64 64 | tr -d '\\n' 으로 생성한 값을 사용하세요.", e);
+        }
     }
 
     public TokenInfo createAccessToken(Long userId) {

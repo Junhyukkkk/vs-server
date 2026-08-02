@@ -3,7 +3,7 @@ set -euo pipefail
 
 APP_DIR="${APP_DIR:-/home/ubuntu/app}"
 DOMAIN="${DOMAIN:-api.vs.io.kr}"
-REPO_RAW_BASE="${REPO_RAW_BASE:-https://raw.githubusercontent.com/JECT-Study/JECT2-4th-Server/main}"
+REPO_RAW_BASE="${REPO_RAW_BASE:-https://raw.githubusercontent.com/Junhyukkkk/vs-server/main}"
 NETWORK="${NETWORK:-app-network}"
 CADDY_CONTAINER="${CADDY_CONTAINER:-caddy}"
 

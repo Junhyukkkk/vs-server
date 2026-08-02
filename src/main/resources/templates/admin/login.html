@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>로그인 · VS 어드민</title>
+    <th:block th:replace="~{admin/fragments :: styles}"></th:block>
+</head>
+<body>
+<header class="topbar">
+    <h1>VS 어드민</h1>
+    <span class="topbar-sub">로그인</span>
+</header>
+
+<main class="wrap">
+    <div class="card centered">
+        <h2>로그인이 필요합니다</h2>
+        <p>
+            서비스와 동일한 구글 계정으로 로그인합니다.<br>
+            로그인 후에는 프론트엔드로 이동하니, 다시 <code>/admin/votes</code> 로 돌아와 주세요.
+        </p>
+        <a class="btn-link" href="/oauth2/authorization/google">구글로 로그인</a>
+    </div>
+</main>
+</body>
+</html>

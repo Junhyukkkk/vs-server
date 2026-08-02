@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>투표 생성 · VS 어드민</title>
+    <th:block th:replace="~{admin/fragments :: styles}"></th:block>
+</head>
+<body>
+<header class="topbar">
+    <h1>VS 어드민</h1>
+    <span class="topbar-sub">투표 생성</span>
+</header>
+
+<main class="wrap">
+
+    <div class="alert alert-success" th:if="${successMessage}" th:text="${successMessage}"></div>
+    <div class="alert alert-error" th:if="${errorMessage}" th:text="${errorMessage}"></div>
+
+    <section class="card">
+        <h2>새 투표 만들기</h2>
+
+        <form action="/admin/votes" method="post" enctype="multipart/form-data" th:object="${form}">
+            <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+
+            <div class="field">
+                <label for="title">제목 <span class="req">필수</span></label>
+                <input type="text" id="title" th:field="*{title}" maxlength="100" placeholder="예) 민트초코, 호불호는?">
+                <p class="error" th:if="${#fields.hasErrors('title')}" th:errors="*{title}"></p>
+            </div>
+
+            <div class="field">
+                <label for="content">설명</label>
+                <textarea id="content" rows="3" th:field="*{content}" maxlength="1000"
+                          placeholder="투표 상세 화면에 노출되는 설명입니다. (선택)"></textarea>
+                <p class="error" th:if="${#fields.hasErrors('content')}" th:errors="*{content}"></p>
+            </div>
+
+            <div class="row">
+                <div class="field">
+                    <label for="optionA">선택지 A <span class="req">필수</span></label>
+                    <input type="text" id="optionA" th:field="*{optionA}" maxlength="50" placeholder="예) 좋아요">
+                    <p class="error" th:if="${#fields.hasErrors('optionA')}" th:errors="*{optionA}"></p>
+                </div>
+                <div class="field">
+                    <label for="optionB">선택지 B <span class="req">필수</span></label>
+                    <input type="text" id="optionB" th:field="*{optionB}" maxlength="50" placeholder="예) 싫어요">
+                    <p class="error" th:if="${#fields.hasErrors('optionB')}" th:errors="*{optionB}"></p>
+                </div>
+            </div>
+
+            <div class="field">
+                <label for="duration">진행 기간 <span class="req">필수</span></label>
+                <select id="duration" th:field="*{duration}">
+                    <option th:each="d : ${durations}" th:value="${d.name}" th:text="${d.label}"></option>
+                </select>
+                <p class="hint">생성 시각 기준으로 이 시간이 지나면 자동 종료됩니다.</p>
+                <p class="error" th:if="${#fields.hasErrors('duration')}" th:errors="*{duration}"></p>
+            </div>
+
+            <fieldset class="field">
+                <legend>이미지 등록 방식</legend>
+                <div class="radios">
+                    <label class="radio">
+                        <input type="radio" name="imageSource" value="FILE" id="src-file"
+                               th:checked="*{imageSource?.name() == 'FILE'}"
+                               th:disabled="${!imageUploadAvailable}">
+                        <span>파일 업로드 <small>(서버가 S3에 올립니다)</small></span>
+                    </label>
+                    <label class="radio">
+                        <input type="radio" name="imageSource" value="URL" id="src-url"
+                               th:checked="*{imageSource?.name() == 'URL'}">
+                        <span>이미지 URL 직접 입력</span>
+                    </label>
+                </div>
+                <p class="hint warn" th:unless="${imageUploadAvailable}">
+                    AWS S3 설정(<code>aws.s3.bucket</code>)이 없어 파일 업로드가 비활성화되었습니다. URL 직접 입력만 사용할 수 있습니다.
+                </p>
+            </fieldset>
+
+            <div id="pane-file" class="pane">
+                <div class="row">
+                    <div class="field">
+                        <label for="thumbnailFile">썸네일 이미지 <span class="req">필수</span></label>
+                        <input type="file" id="thumbnailFile" name="thumbnailFile" accept="image/*">
+                        <p class="hint">목록/카드에 노출되는 대표 이미지입니다.</p>
+                    </div>
+                    <div class="field">
+                        <label for="imageFile">추가 이미지</label>
+                        <input type="file" id="imageFile" name="imageFile" accept="image/*">
+                        <p class="hint">상세 화면용 이미지입니다. (선택)</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="pane-url" class="pane">
+                <div class="field">
+                    <label for="thumbnailUrl">썸네일 이미지 URL <span class="req">필수</span></label>
+                    <input type="url" id="thumbnailUrl" th:field="*{thumbnailUrl}"
+                           placeholder="https://ject-vs-images.s3.ap-southeast-2.amazonaws.com/images/....png">
+                    <p class="error" th:if="${#fields.hasErrors('thumbnailUrl')}" th:errors="*{thumbnailUrl}"></p>
+                </div>
+                <div class="field">
+                    <label for="imageUrl">추가 이미지 URL</label>
+                    <input type="url" id="imageUrl" th:field="*{imageUrl}" placeholder="(선택)">
+                    <p class="error" th:if="${#fields.hasErrors('imageUrl')}" th:errors="*{imageUrl}"></p>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button type="submit" class="btn-primary">투표 생성</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="card">
+        <h2>최근 투표 <small th:text="'(최대 30개)'"></small></h2>
+
+        <p class="empty" th:if="${#lists.isEmpty(recentVotes)}">아직 생성된 투표가 없습니다.</p>
+
+        <div class="table-scroll" th:unless="${#lists.isEmpty(recentVotes)}">
+            <table>
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>썸네일</th>
+                    <th>제목</th>
+                    <th>선택지</th>
+                    <th>상태</th>
+                    <th>종료 (KST)</th>
+                    <th class="num">참여</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="v : ${recentVotes}">
+                    <td class="mono" th:text="${v.id}"></td>
+                    <td>
+                        <img class="thumb" th:if="${v.thumbnailUrl}" th:src="${v.thumbnailUrl}" alt="" loading="lazy">
+                    </td>
+                    <td th:text="${v.title}"></td>
+                    <td class="options">
+                        <span class="chip" th:text="${v.optionA}"></span>
+                        <span class="vs">vs</span>
+                        <span class="chip" th:text="${v.optionB}"></span>
+                    </td>
+                    <td>
+                        <span class="badge" th:classappend="${v.ongoing} ? 'badge-live' : 'badge-done'"
+                              th:text="${v.ongoing} ? '진행중' : '종료'"></span>
+                    </td>
+                    <td class="mono" th:text="${v.endAt}"></td>
+                    <td class="num mono" th:text="${v.participantCount}"></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+
+<script>
+    (function () {
+        var panes = {FILE: document.getElementById('pane-file'), URL: document.getElementById('pane-url')};
+
+        function sync() {
+            var checked = document.querySelector('input[name="imageSource"]:checked');
+            var mode = checked ? checked.value : 'URL';
+            Object.keys(panes).forEach(function (key) {
+                panes[key].classList.toggle('active', key === mode);
+            });
+        }
+
+        Array.prototype.forEach.call(
+            document.querySelectorAll('input[name="imageSource"]'),
+            function (radio) { radio.addEventListener('change', sync); }
+        );
+        sync();
+    })();
+</script>
+</body>
+</html>

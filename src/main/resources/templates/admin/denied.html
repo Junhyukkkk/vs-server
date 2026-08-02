@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>권한 없음 · VS 어드민</title>
+    <th:block th:replace="~{admin/fragments :: styles}"></th:block>
+</head>
+<body>
+<header class="topbar">
+    <h1>VS 어드민</h1>
+    <span class="topbar-sub">권한 없음</span>
+</header>
+
+<main class="wrap">
+    <div class="card centered">
+        <h2>접근 권한이 없습니다</h2>
+        <p>
+            현재 로그인한 계정<span th:if="${userId}" th:text="'(userId = ' + ${userId} + ')'"></span>은
+            운영진으로 등록되어 있지 않습니다.<br>
+            환경변수 <code>ADMIN_USER_IDS</code> 에 해당 userId를 추가해야 합니다.
+        </p>
+        <a class="btn-link" href="/admin/login">다른 계정으로 로그인</a>
+    </div>
+</main>
+</body>
+</html>
