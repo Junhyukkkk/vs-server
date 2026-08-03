@@ -61,6 +61,20 @@ public class User {
         this.userStatus = UserStatus.REGISTER;
     }
 
+    /**
+     * 신규 가입자에게 기본 프로필(랜덤 닉네임 + 랜덤 색상)을 부여한다.
+     *
+     * <p>닉네임 입력 전용 페이지가 없고 가입 직후 랜덤 닉네임으로 시작하는 정책이므로,
+     * 사용자 행이 만들어지는 시점에 여기서 채운다. 이 값이 비어 있으면
+     * {@code GET /api/users/me}가 USER_NOT_REGISTER(404)를 던져 프론트가 진입하지 못한다.
+     * 닉네임/색상 변경은 마이페이지에서 이뤄진다.
+     */
+    public void assignDefaultProfile(String nickname, ImageColor imageColor) {
+        this.nickname = nickname;
+        this.imageColor = imageColor;
+        this.userStatus = UserStatus.REGISTER;
+    }
+
     public void initializeDefault(String email, Year birthYear, Gender gender, String nickname)  {
         this.email = email;
         this.birthYear = birthYear;
