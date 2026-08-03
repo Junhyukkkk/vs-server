@@ -35,11 +35,9 @@ REQUIRED_ENV_VARS=(
   APP_JWT_ACCESS_TOKEN_EXPIRATION_SECONDS
   APP_JWT_REFRESH_TOKEN_EXPIRATION_SECONDS
   # 소셜 로그인 성공 후 프론트로 되돌려보낼 URL. 비어 있으면 로그인 성공 직후
-  # 빈 문자열로 리다이렉트되어 /login?error 로 떨어진다.
-  # 특히 EXTRA_INFO_URL은 가입(UNREGISTER) 사용자만 타는 경로라 기존 회원 로그인은
-  # 정상으로 보이고 신규 가입/재가입만 조용히 막히므로 반드시 여기서 걸러낸다.
+  # 빈 문자열로 리다이렉트되고, 빈 상대 경로는 현재 요청 URI(=이미 소비된 code가 붙은
+  # OAuth 콜백)로 해석되어 invalid_grant → /login?error 로 떨어진다.
   APP_OAUTH2_REDIRECT_SUCCESS_URL
-  APP_OAUTH2_EXTRA_INFO_URL
   GOOGLE_OAUTH_CLIENT_ID
   GOOGLE_OAUTH_CLIENT_SECRET
 )
@@ -120,7 +118,6 @@ DOCKER_OPTS=(
   -e APP_JWT_ACCESS_TOKEN_EXPIRATION_SECONDS
   -e APP_JWT_REFRESH_TOKEN_EXPIRATION_SECONDS
   -e APP_OAUTH2_REDIRECT_SUCCESS_URL
-  -e APP_OAUTH2_EXTRA_INFO_URL
   -e GOOGLE_OAUTH_CLIENT_ID
   -e GOOGLE_OAUTH_CLIENT_SECRET
 )

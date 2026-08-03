@@ -5,7 +5,6 @@ import com.ject.vs.analytics.AnalyticsEventLogger;
 import com.ject.vs.auth.port.AuthService;
 import com.ject.vs.auth.port.in.dto.LoginTokenResponse;
 import com.ject.vs.common.exception.BusinessException;
-import com.ject.vs.user.domain.UserStatus;
 import com.ject.vs.user.domain.UtmAttribution;
 import com.ject.vs.util.CookieUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -49,7 +48,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
 
             addTokenCookies(response, loginResponse);
 
-            String targetUrl = determineTargetUrl(loginResponse.getUserStatus());
+            String targetUrl = oauth2Properties.redirectSuccessUrl();
 
             AnalyticsEvent event = AnalyticsEvent.of("signup_completed")
                     .userId(loginResponse.getUserId())
@@ -119,12 +118,5 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             return token.getAuthorizedClientRegistrationId();
         }
         return null;
-    }
-
-    private String determineTargetUrl(UserStatus status) {
-        if (UserStatus.REGISTER.equals(status)) {
-            return oauth2Properties.redirectSuccessUrl();
-        }
-        return oauth2Properties.extraInfoUrl();
     }
 }
