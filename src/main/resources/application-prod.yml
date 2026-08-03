@@ -36,8 +36,9 @@ server:
 app:
   oauth2:
     # 프론트엔드 도메인. GitHub Actions secrets로 주입한다.
-    redirect-success-url: ${APP_OAUTH2_REDIRECT_SUCCESS_URL:https://example.com/oauth2/redirect}
-    extra-info-url: ${APP_OAUTH2_EXTRA_INFO_URL:https://example.com/extra-info}
+    # 기본값을 두지 않는다. 기본값이 있으면 주입 누락이 가려진 채 배포가 성공해버린다.
+    # 값이 비면 OAuth2Properties의 @NotBlank가 기동을 막는다.
+    redirect-success-url: ${APP_OAUTH2_REDIRECT_SUCCESS_URL}
   cookie:
     secure: true
   jwt:

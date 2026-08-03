@@ -5,7 +5,6 @@ import com.ject.vs.analytics.AnalyticsEventLogger;
 import com.ject.vs.auth.port.AuthService;
 import com.ject.vs.auth.port.in.dto.LoginTokenResponse;
 import com.ject.vs.common.exception.BusinessException;
-import com.ject.vs.user.domain.UserStatus;
 import com.ject.vs.user.domain.UtmAttribution;
 import com.ject.vs.util.CookieUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -49,7 +48,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
 
             addTokenCookies(response, loginResponse);
 
-            String targetUrl = determineTargetUrl(loginResponse.getUserStatus());
+            String targetUrl = oauth2Properties.redirectSuccessUrl();
 
             AnalyticsEvent event = AnalyticsEvent.of("signup_completed")
                     .userId(loginResponse.getUserId())
@@ -73,10 +72,18 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             getRedirectStrategy().sendRedirect(request, response, targetUrl);
 
         } catch (Exception e) {
-            log.error("=== OAuth2 Login Error ===", e);
-            response.sendRedirect("/login?error");
-
+            log.error("=== OAuth2 Login Error === email: {}", email, e);
+            // 백엔드 기본 로그인 페이지(/login?error)로 보내면 사용자에겐 원인 불명의
+            // "Invalid credentials"만 뜨고 프론트도 실패를 감지할 수 없다. 프론트로 되돌려
+            // 에러 코드를 넘긴다.
+            getRedirectStrategy().sendRedirect(request, response, loginFailureUrl());
         }
+    }
+
+    /** 로그인 실패 시 프론트로 되돌아갈 URL. 성공 URL에 error 쿼리 파라미터만 붙인다. */
+    private String loginFailureUrl() {
+        String base = oauth2Properties.redirectSuccessUrl();
+        return base + (base.contains("?") ? "&" : "?") + "error=login_failed";
     }
 
     private void addTokenCookies(HttpServletResponse response, LoginTokenResponse loginResponse) {
@@ -111,12 +118,5 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             return token.getAuthorizedClientRegistrationId();
         }
         return null;
-    }
-
-    private String determineTargetUrl(UserStatus status) {
-        if (UserStatus.REGISTER.equals(status)) {
-            return oauth2Properties.redirectSuccessUrl();
-        }
-        return oauth2Properties.extraInfoUrl();
     }
 }
