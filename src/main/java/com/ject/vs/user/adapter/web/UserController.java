@@ -7,6 +7,7 @@ import com.ject.vs.user.port.UserService;
 import com.ject.vs.vote.exception.UnauthorizedException;
 import com.ject.vs.util.CookieUtil;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +31,7 @@ public class UserController {
 
     @Operation(summary = "추가 정보 설정", description = "사용자 추가 정보(닉네임, 성별, 생년월일)를 설정합니다.")
     @PostMapping("/me/profile")
-    public ResponseEntity<UserProfileResponse> setupInfo(@AuthenticationPrincipal Long userId, @RequestBody UserExtraInfo userExtraInfo) {
+    public ResponseEntity<UserProfileResponse> setupInfo(@AuthenticationPrincipal Long userId, @RequestBody @Valid UserExtraInfo userExtraInfo) {
         UserProfileResponse response = userService.setupAdditionalInfo(userExtraInfo, userId);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);

@@ -62,17 +62,17 @@ public class User {
     }
 
     /**
-     * 신규 가입자에게 기본 프로필(랜덤 닉네임 + 랜덤 색상)을 부여한다.
+     * 회원가입 절차(성별/출생연도/닉네임/프로필 색상)를 모두 마쳤는지 여부.
      *
-     * <p>닉네임 입력 전용 페이지가 없고 가입 직후 랜덤 닉네임으로 시작하는 정책이므로,
-     * 사용자 행이 만들어지는 시점에 여기서 채운다. 이 값이 비어 있으면
-     * {@code GET /api/users/me}가 USER_NOT_REGISTER(404)를 던져 프론트가 진입하지 못한다.
-     * 닉네임/색상 변경은 마이페이지에서 이뤄진다.
+     * <p>{@link UserStatus}가 아니라 실제 값의 유무로 판정한다. 상태 enum은
+     * {@code initializeDefault}처럼 상태를 갱신하지 않는 경로가 있어 신뢰할 수 없고,
+     * 그 결과 온보딩을 건너뛴 사용자가 REGISTER로 남아 있을 수 있다.
+     *
+     * <p>출생연도와 성별은 가입 이후 수정할 수단이 없으므로(마이페이지는 닉네임/색상만
+     * 변경한다) 여기서 비어 있으면 반드시 온보딩으로 되돌려보내야 한다.
      */
-    public void assignDefaultProfile(String nickname, ImageColor imageColor) {
-        this.nickname = nickname;
-        this.imageColor = imageColor;
-        this.userStatus = UserStatus.REGISTER;
+    public boolean hasCompletedOnboarding() {
+        return nickname != null && birthYear != null && gender != null && imageColor != null;
     }
 
     public void initializeDefault(String email, Year birthYear, Gender gender, String nickname)  {

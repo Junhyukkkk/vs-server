@@ -48,7 +48,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
 
             addTokenCookies(response, loginResponse);
 
-            String targetUrl = oauth2Properties.redirectSuccessUrl();
+            String targetUrl = determineTargetUrl(loginResponse);
 
             AnalyticsEvent event = AnalyticsEvent.of("signup_completed")
                     .userId(loginResponse.getUserId())
@@ -66,7 +66,8 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
 
             log.info("=== OAuth2 Login Success ===");
             log.info("email: {}", email);
-            log.info("userStatus: {}", loginResponse.getUserStatus());
+            log.info("userStatus: {}, onboardingCompleted: {}",
+                    loginResponse.getUserStatus(), loginResponse.isOnboardingCompleted());
             log.info("targetUrl: {}", targetUrl);
 
             getRedirectStrategy().sendRedirect(request, response, targetUrl);
@@ -78,6 +79,19 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             // 에러 코드를 넘긴다.
             getRedirectStrategy().sendRedirect(request, response, loginFailureUrl());
         }
+    }
+
+    /**
+     * 가입 절차를 마친 사용자만 홈으로 보내고, 나머지는 온보딩 페이지로 보낸다.
+     *
+     * <p>판정 기준은 userStatus가 아니라 실제 프로필 값의 유무다. 상태 enum을 갱신하지 않는
+     * 경로가 있어 온보딩을 건너뛴 사용자가 REGISTER로 남아 있을 수 있고, 그 경우
+     * 출생연도/성별이 영구히 공란이 된다(가입 이후 입력 수단이 없다).
+     */
+    private String determineTargetUrl(LoginTokenResponse loginResponse) {
+        return loginResponse.isOnboardingCompleted()
+                ? oauth2Properties.redirectSuccessUrl()
+                : oauth2Properties.extraInfoUrl();
     }
 
     /** 로그인 실패 시 프론트로 되돌아갈 URL. 성공 URL에 error 쿼리 파라미터만 붙인다. */

@@ -65,6 +65,7 @@ public class AuthService {
                 .accessToken(accessToken.getTokenValue())
                 .refreshToken(refreshToken.getTokenValue())
                 .userStatus(user.getUserStatus())
+                .onboardingCompleted(user.hasCompletedOnboarding())
                 .build();
     }
 
