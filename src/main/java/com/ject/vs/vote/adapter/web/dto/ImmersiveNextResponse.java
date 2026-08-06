@@ -1,5 +1,6 @@
 package com.ject.vs.vote.adapter.web.dto;
 
+import com.ject.vs.experiment.AbVariant;
 import com.ject.vs.vote.domain.VoteEmoji;
 import com.ject.vs.vote.port.in.ImmersiveVoteQueryUseCase.ImmersiveNextResult;
 
@@ -9,7 +10,10 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 
-public record ImmersiveNextResponse(List<VoteItem> items) {
+/**
+ * @param variant 이 사용자에게 보여줄 몰입형 화면 A/B 시안("A" 또는 "B"). 클라이언트는 이 값으로 UI를 고른다.
+ */
+public record ImmersiveNextResponse(List<VoteItem> items, String variant) {
 
     public record VoteItem(
             Long voteId,
@@ -48,7 +52,7 @@ public record ImmersiveNextResponse(List<VoteItem> items) {
         return instant.atOffset(ZoneOffset.ofHours(9));
     }
 
-    public static ImmersiveNextResponse from(ImmersiveNextResult result) {
+    public static ImmersiveNextResponse from(ImmersiveNextResult result, AbVariant variant) {
         List<VoteItem> items = result.items().stream()
                 .map(i -> {
                     List<OptionItem> options = i.options().stream()
@@ -73,6 +77,6 @@ public record ImmersiveNextResponse(List<VoteItem> items) {
                     );
                 })
                 .toList();
-        return new ImmersiveNextResponse(items);
+        return new ImmersiveNextResponse(items, variant.name());
     }
 }
