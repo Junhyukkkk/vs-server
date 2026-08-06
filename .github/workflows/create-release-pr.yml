@@ -7,6 +7,8 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  # 라벨 생성/수정은 issues 권한이 필요하다. (아래 "Ensure release label exists")
+  issues: write
 
 jobs:
   create-release-pr:
@@ -66,6 +68,20 @@ jobs:
           gh pr edit ${{ steps.check.outputs.existing_pr }} \
             --title "release: develop → main" \
             --body-file /tmp/release-pr-body.txt
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # gh pr create --label 은 없는 라벨을 만들어주지 않고
+      # "could not add label: 'release' not found" 로 실패한다.
+      # (actions/labeler 는 API가 라벨을 자동 생성해줘서 이 문제가 없다.)
+      # --force 로 있으면 갱신, 없으면 생성해 멱등하게 보장한다.
+      - name: Ensure release label exists
+        if: steps.check.outputs.existing_pr == ''
+        run: |
+          gh label create release \
+            --description "develop → main 배포 PR" \
+            --color 0E8A16 \
+            --force
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
