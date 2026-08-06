@@ -30,21 +30,14 @@ public class UserService {
     public User findOrCreate(String email, UtmAttribution utm) {
         // 활성 사용자(탈퇴 제외)만 조회한다. 재가입은 기존 탈퇴 계정을 복구하지 않고 새 row를 생성한다.
         // UTM 출처는 새 row를 만드는 경우(=신규 가입)에만 기록한다. 기존 사용자 재로그인 시엔 덮어쓰지 않는다(first-touch 고정).
-        User user = userRepository.findByEmailAndUserStatusNot(email, UserStatus.WITHDRAWN)
+        // 가입 절차(성별/출생연도/닉네임/색상)는 온보딩 페이지에서 사용자가 직접 입력한다.
+        // 서버가 임의 값으로 채우면 출생연도/성별이 공란으로 굳어버린다(이후 수정 수단이 없다).
+        return userRepository.findByEmailAndUserStatusNot(email, UserStatus.WITHDRAWN)
                 .orElseGet(() -> {
                     User created = User.createWithEmail(email);
                     created.assignSignupSource(utm);
                     return userRepository.save(created);
                 });
-
-        // 닉네임이 비어 있으면 프로필 조회가 404(USER_NOT_REGISTER)로 막혀 서비스 진입 자체가 불가능하다.
-        // 가입 시점에 랜덤 닉네임을 채워 그 상태를 만들지 않는다.
-        // 이미 닉네임 없이 만들어진 사용자도 다음 로그인에 여기서 복구된다.
-        if (user.getNickname() == null) {
-            user.assignDefaultProfile(wordService.generateNickname(), userImageService.getRandomColor());
-        }
-
-        return user;
     }
 
     public NicknameCheckResponse checkNickname(String nickName, Long userId) {
@@ -64,6 +57,13 @@ public class UserService {
     public UserProfileResponse setupAdditionalInfo(UserExtraInfo userInfo, Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+
+        // 마이페이지 수정(modifyInfo)과 달리 중복 검사가 없어 같은 닉네임이 여러 개 생길 수 있었다.
+        // 온보딩을 다시 진행하는 경우가 있으므로 본인이 쓰던 닉네임은 그대로 허용한다.
+        if (!userInfo.nickName().equals(user.getNickname())
+                && !userRepository.isNicknameAvailable(userInfo.nickName())) {
+            throw new BusinessException(UserErrorCode.USER_NICKNAME_DUPLICATE);
+        }
 
         user.updateInfo(userInfo);
         return UserProfileResponse.from(user);

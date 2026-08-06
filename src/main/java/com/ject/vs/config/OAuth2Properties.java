@@ -14,5 +14,7 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 @ConfigurationProperties(prefix = "app.oauth2")
 public record OAuth2Properties(
-        @NotBlank String redirectSuccessUrl
+        @NotBlank String redirectSuccessUrl,
+        /** 가입 절차(성별/출생연도/닉네임/색상) 입력 페이지. 온보딩 미완료 사용자가 여기로 간다. */
+        @NotBlank String extraInfoUrl
 ) {}
