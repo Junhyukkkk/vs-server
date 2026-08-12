@@ -32,7 +32,7 @@ public interface HomeVoteQueryUseCase {
     ) {
     }
 
-    // 핫토픽 TOP 3 결과
+    // 핫토픽 TOP 5 결과
     record HotTopicResult(List<HotTopicItem> items) {
     }
 
