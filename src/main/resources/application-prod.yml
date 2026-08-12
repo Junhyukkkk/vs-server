@@ -42,17 +42,32 @@ app:
     extra-info-url: ${APP_OAUTH2_EXTRA_INFO_URL}
   cookie:
     secure: true
+    # 인증 쿠키를 굽는 도메인. 백엔드(api.vs.io.kr)가 발급한 쿠키를 프론트(vs.io.kr,
+    # www.vs.io.kr)와 같은 사이트로 취급시키기 위해 상위 도메인을 지정한다.
+    # 비우면 Domain 속성 없이 api.vs.io.kr 전용(host-only)으로 발급된다.
+    domain: ${APP_COOKIE_DOMAIN:.vs.io.kr}
   jwt:
     secret: ${APP_JWT_SECRET}
     access-token-expiration-seconds: ${APP_JWT_ACCESS_TOKEN_EXPIRATION_SECONDS:1800}
     refresh-token-expiration-seconds: ${APP_JWT_REFRESH_TOKEN_EXPIRATION_SECONDS:2592000}
 
   cors:
-    # 브라우저에서 호출하는 프론트엔드 도메인을 APP_CORS_ALLOWED_ORIGINS에 콤마로 구분해 설정한다.
-    # 예: APP_CORS_ALLOWED_ORIGINS=https://app.example.com,https://admin.example.com
-    # 기본값은 로컬 프론트 개발용만 포함한다. 운영 프론트 도메인은 반드시 환경변수로 주입할 것.
+    # 브라우저에서 호출하는 프론트엔드 도메인 목록.
+    # 프론트 도메인은 비밀값이 아니고, 배포 이력과 함께 리뷰되는 편이 낫기 때문에 기본값을 여기 둔다.
+    # 임시로 다른 도메인을 열어야 하면 APP_CORS_ALLOWED_ORIGINS로 override한다(콤마 구분).
+    # 주의: 환경변수가 설정되면 이 목록은 통째로 대체된다. 추가가 아니라 교체다.
+    #
+    # netlify.app 주소는 프론트가 Netlify로 이전하며 생긴 기본 배포 주소다. 커스텀 도메인
+    # (vs.io.kr) 연결이 끝난 뒤에도 살아있으므로, 프론트 담당자의 확인용으로 함께 열어둔다.
     # 백엔드 서버간 직접 호출에는 브라우저 CORS 검사가 적용되지 않는다.
-    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://127.0.0.1:3000}
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:https://vs.io.kr,https://www.vs.io.kr,https://idyllic-crostata-c663ca.netlify.app}
+    #
+    # Netlify 브랜치/PR 프리뷰(deploy-preview-12--사이트명.netlify.app)까지 열어야 하면
+    # APP_CORS_ALLOWED_ORIGIN_PATTERNS 환경변수로 패턴을 준다(키를 여기 두지 않아도 환경변수가
+    # app.cors.allowed-origin-patterns로 바인딩된다). 미설정 시 패턴 허용은 없다.
+    # 예: APP_CORS_ALLOWED_ORIGIN_PATTERNS=https://*--idyllic-crostata-c663ca.netlify.app
+    # 와일드카드는 프리뷰 서브도메인에만 쓸 것. allow-credentials=true인 채로 범위를 넓게 잡으면
+    # 그 패턴에 걸리는 아무 사이트에서나 쿠키 실린 요청을 보낼 수 있게 된다.
     allowed-methods: ${APP_CORS_ALLOWED_METHODS:GET,POST,PUT,PATCH,DELETE,OPTIONS}
     allowed-headers: ${APP_CORS_ALLOWED_HEADERS:Authorization,Content-Type,X-Requested-With,Accept,Origin}
     allow-credentials: ${APP_CORS_ALLOW_CREDENTIALS:true}

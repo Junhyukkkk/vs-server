@@ -37,6 +37,9 @@ app:
 
   cookie:
     secure: false
+    # domain 미설정 = Domain 속성 없이 localhost 전용으로 발급.
+    # 여기에 .vs.io.kr 같은 값을 넣으면 브라우저가 쿠키 자체를 버려서 로컬 로그인이 안 된다.
+    domain:
   cors:
     allowed-origins:
       - http://localhost:3000

@@ -120,7 +120,7 @@ public class UserController {
     private ResponseCookie expiredCookie(String name) {
         return ResponseCookie.from(name, "")
                 .path("/")
-                .domain(".vs.io.kr")
+                .domain(cookieProperties.domain())
                 .httpOnly(true)
                 .secure(cookieProperties.secure())
                 .sameSite(cookieProperties.sameSite())

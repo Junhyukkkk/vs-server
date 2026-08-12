@@ -44,7 +44,7 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(cookieProperties.secure())
                 .path("/")
-                .domain(".vs.io.kr")
+                .domain(cookieProperties.domain())
                 .sameSite(cookieProperties.sameSite())
                 .maxAge(accessTokenExpiration)
                 .build();
@@ -56,7 +56,7 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(cookieProperties.secure())
                 .path("/")
-                .domain(".vs.io.kr")
+                .domain(cookieProperties.domain())
                 .sameSite(cookieProperties.sameSite())
                 .maxAge(refreshTokenExpiration)
                 .build();
@@ -76,7 +76,7 @@ public class AuthController {
                 ""
         )
                 .path("/")
-                .domain(".vs.io.kr")
+                .domain(cookieProperties.domain())
                 .httpOnly(true)
                 .secure(cookieProperties.secure())
                 .sameSite(cookieProperties.sameSite())
@@ -88,7 +88,7 @@ public class AuthController {
                 ""
         )
                 .path("/")
-                .domain(".vs.io.kr")
+                .domain(cookieProperties.domain())
                 .httpOnly(true)
                 .secure(cookieProperties.secure())
                 .sameSite(cookieProperties.sameSite())
