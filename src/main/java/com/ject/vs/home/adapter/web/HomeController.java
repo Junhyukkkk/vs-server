@@ -25,7 +25,7 @@ public class HomeController {
         return HomeRecommendationResponse.from(homeVoteQueryUseCase.getRecommendations());
     }
 
-    @Operation(summary = "핫토픽 TOP 3 조회", description = "인기 점수 기준 상위 3개 투표를 조회합니다. 인기 점수 = (참여 수 × 0.7) + (조회 수 × 0.3)")
+    @Operation(summary = "핫토픽 TOP 5 조회", description = "인기 점수 기준 상위 5개 투표를 조회합니다. 인기 점수 = (참여 수 × 0.7) + (조회 수 × 0.3)")
     @GetMapping("/hot-topics")
     public HomeHotTopicResponse getHotTopics() {
         return HomeHotTopicResponse.from(homeVoteQueryUseCase.getHotTopics());
