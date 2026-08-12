@@ -126,11 +126,22 @@ DOCKER_OPTS=(
   -e GOOGLE_OAUTH_CLIENT_SECRET
 )
 
-# 프론트엔드 도메인이 확정된 경우에만 CORS 허용 목록을 덮어쓴다.
-# 비어 있으면 application-prod.yml의 기본값(localhost)이 그대로 쓰인다.
+# CORS 허용 목록/쿠키 도메인은 application-prod.yml에 운영 기본값이 들어있다.
+# 임시로 다른 도메인을 열어야 할 때만 환경변수로 덮어쓴다. 값이 비면 전달하지 않는다.
+# (빈 문자열로 전달하면 yml의 ${VAR:기본값}이 빈 값으로 확정되어 기본값이 무력화된다.)
 if [ -n "${APP_CORS_ALLOWED_ORIGINS:-}" ]; then
   DOCKER_OPTS+=(-e APP_CORS_ALLOWED_ORIGINS)
-  log "CORS 허용 도메인 설정됨"
+  log "CORS 허용 도메인 override됨"
+fi
+
+if [ -n "${APP_CORS_ALLOWED_ORIGIN_PATTERNS:-}" ]; then
+  DOCKER_OPTS+=(-e APP_CORS_ALLOWED_ORIGIN_PATTERNS)
+  log "CORS 허용 도메인 패턴 설정됨"
+fi
+
+if [ -n "${APP_COOKIE_DOMAIN:-}" ]; then
+  DOCKER_OPTS+=(-e APP_COOKIE_DOMAIN)
+  log "인증 쿠키 도메인 override됨"
 fi
 
 # 추천 투표 설정 권한을 가진 user id 목록 (콤마 구분)

@@ -108,7 +108,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                 .httpOnly(true)
                 .secure(cookieProperties.secure())
                 .path("/")
-                .domain(".vs.io.kr")
+                .domain(cookieProperties.domain())
                 .maxAge(accessTokenExpiration)
                 .sameSite(cookieProperties.sameSite())
                 .build();
@@ -117,7 +117,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                 .httpOnly(true)
                 .secure(cookieProperties.secure())
                 .path("/")
-                .domain(".vs.io.kr")
+                .domain(cookieProperties.domain())
                 .maxAge(refreshTokenExpiration)
                 .sameSite(cookieProperties.sameSite())
                 .build();
