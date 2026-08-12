@@ -29,6 +29,7 @@ public class HomeVoteQueryService implements HomeVoteQueryUseCase {
 
     private static final double PARTICIPANT_WEIGHT = 0.7;
     private static final double VIEW_WEIGHT = 0.3;
+    private static final int HOT_TOPIC_SIZE = 5;
 
     @Override
     public RecommendationResult getRecommendations() {
@@ -86,7 +87,7 @@ public class HomeVoteQueryService implements HomeVoteQueryUseCase {
                 ));
 
         // 인기 점수 계산 및 정렬
-        List<Vote> top3 = ongoingVotes.stream()
+        List<Vote> topVotes = ongoingVotes.stream()
                 .sorted((v1, v2) -> {
                     double score1 = calculatePopularityScore(
                             participantCounts.getOrDefault(v1.getId(), 0L),
@@ -102,12 +103,12 @@ public class HomeVoteQueryService implements HomeVoteQueryUseCase {
                     }
                     return Double.compare(score2, score1);
                 })
-                .limit(3)
+                .limit(HOT_TOPIC_SIZE)
                 .toList();
 
         List<HotTopicItem> items = new java.util.ArrayList<>();
-        for (int i = 0; i < top3.size(); i++) {
-            Vote vote = top3.get(i);
+        for (int i = 0; i < topVotes.size(); i++) {
+            Vote vote = topVotes.get(i);
             items.add(new HotTopicItem(
                     i + 1,
                     vote.getId(),
