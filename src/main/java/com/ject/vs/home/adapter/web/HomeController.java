@@ -25,7 +25,12 @@ public class HomeController {
         return HomeRecommendationResponse.from(homeVoteQueryUseCase.getRecommendations());
     }
 
-    @Operation(summary = "핫토픽 TOP 5 조회", description = "인기 점수 기준 상위 5개 투표를 조회합니다. 인기 점수 = (참여 수 × 0.7) + (조회 수 × 0.3)")
+    @Operation(summary = "핫토픽 TOP 5 조회", description = """
+            인기 점수 기준 상위 5개 투표를 조회합니다.
+            인기 점수 = (참여 수 × 0.7) + (조회 수 × 0.3) + 신규 가중치
+            신규 가중치는 생성 직후 5점에서 시작해 24시간에 걸쳐 0까지 선형 감쇠합니다.
+            순위는 KST 기준 3시간마다(0/3/6/9/12/15/18/21시) 갱신되며, 갱신 주기 사이에 종료된 투표는 제외되고 순위가 1위부터 다시 매겨집니다.
+            진행 중인 투표가 5개 미만이면 있는 개수만큼만 반환합니다.""")
     @GetMapping("/hot-topics")
     public HomeHotTopicResponse getHotTopics() {
         return HomeHotTopicResponse.from(homeVoteQueryUseCase.getHotTopics());
