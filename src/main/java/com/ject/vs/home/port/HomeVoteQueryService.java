@@ -1,6 +1,9 @@
 package com.ject.vs.home.port;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.ject.vs.home.domain.HotTopicScorer;
 import com.ject.vs.home.port.in.HomeVoteQueryUseCase;
+import com.ject.vs.home.port.in.HotTopicRefreshUseCase;
 import com.ject.vs.vote.domain.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -12,6 +15,8 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -19,17 +24,17 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class HomeVoteQueryService implements HomeVoteQueryUseCase {
+public class HomeVoteQueryService implements HomeVoteQueryUseCase, HotTopicRefreshUseCase {
 
     private final VoteRepository voteRepository;
     private final VoteParticipationRepository voteParticipationRepository;
     private final VoteStatisticsRepository voteStatisticsRepository;
     private final RecommendedVoteRepository recommendedVoteRepository;
     private final Clock clock;
+    private final Cache<String, HotTopicResult> hotTopicCache;
 
-    private static final double PARTICIPANT_WEIGHT = 0.7;
-    private static final double VIEW_WEIGHT = 0.3;
     private static final int HOT_TOPIC_SIZE = 5;
+    private static final String HOT_TOPIC_CACHE_KEY = "hot-topics";
 
     @Override
     public RecommendationResult getRecommendations() {
@@ -55,8 +60,33 @@ public class HomeVoteQueryService implements HomeVoteQueryUseCase {
         return new RecommendationResult(items);
     }
 
+    /**
+     * 핫토픽 TOP 5 조회.
+     *
+     * <p>순위는 3시간마다 갱신되는 캐시에서 읽는다. 갱신 주기 사이에 종료된 투표는
+     * 응답 시점에 제외하고 남은 투표에 순위를 다시 매긴다.
+     */
     @Override
     public HotTopicResult getHotTopics() {
+        HotTopicResult cached = hotTopicCache.getIfPresent(HOT_TOPIC_CACHE_KEY);
+        if (cached == null) {
+            cached = computeAndCacheHotTopics();
+        }
+        return excludeEndedVotes(cached);
+    }
+
+    @Override
+    public void refreshHotTopics() {
+        computeAndCacheHotTopics();
+    }
+
+    private HotTopicResult computeAndCacheHotTopics() {
+        HotTopicResult result = computeHotTopics();
+        hotTopicCache.put(HOT_TOPIC_CACHE_KEY, result);
+        return result;
+    }
+
+    private HotTopicResult computeHotTopics() {
         Instant now = Instant.now(clock);
 
         // 진행 중인 투표만 조회
@@ -86,27 +116,27 @@ public class HomeVoteQueryService implements HomeVoteQueryUseCase {
                         VoteStatistics::getViewCount
                 ));
 
-        // 인기 점수 계산 및 정렬
+        // 인기 점수는 투표당 한 번만 계산해두고 정렬에 재사용한다
+        Map<Long, Double> scores = ongoingVotes.stream()
+                .collect(Collectors.toMap(
+                        Vote::getId,
+                        vote -> HotTopicScorer.score(
+                                participantCounts.getOrDefault(vote.getId(), 0L),
+                                viewCounts.getOrDefault(vote.getId(), 0L),
+                                vote.getCreatedAt(),
+                                now
+                        )
+                ));
+
         List<Vote> topVotes = ongoingVotes.stream()
-                .sorted((v1, v2) -> {
-                    double score1 = calculatePopularityScore(
-                            participantCounts.getOrDefault(v1.getId(), 0L),
-                            viewCounts.getOrDefault(v1.getId(), 0L)
-                    );
-                    double score2 = calculatePopularityScore(
-                            participantCounts.getOrDefault(v2.getId(), 0L),
-                            viewCounts.getOrDefault(v2.getId(), 0L)
-                    );
-                    // 동점인 경우 최신 투표 우선
-                    if (score1 == score2) {
-                        return v2.getId().compareTo(v1.getId());
-                    }
-                    return Double.compare(score2, score1);
-                })
+                .sorted(Comparator
+                        .comparingDouble((Vote vote) -> scores.get(vote.getId())).reversed()
+                        // 신규 가중치 덕에 점수가 같기는 어렵지만, 생성 시각까지 같을 때를 대비해 최신 우선으로 고정한다
+                        .thenComparing(Vote::getId, Comparator.reverseOrder()))
                 .limit(HOT_TOPIC_SIZE)
                 .toList();
 
-        List<HotTopicItem> items = new java.util.ArrayList<>();
+        List<HotTopicItem> items = new ArrayList<>();
         for (int i = 0; i < topVotes.size(); i++) {
             Vote vote = topVotes.get(i);
             items.add(new HotTopicItem(
@@ -117,6 +147,32 @@ public class HomeVoteQueryService implements HomeVoteQueryUseCase {
                     vote.getContent(),
                     participantCounts.getOrDefault(vote.getId(), 0L),
                     vote.getEndAt()
+            ));
+        }
+
+        return new HotTopicResult(items);
+    }
+
+    /**
+     * 캐시 갱신 이후 종료된 투표를 제외하고 순위를 1위부터 다시 부여한다.
+     * 순위에 구멍이 생기면 프론트의 캐러셀/리스트 분기가 깨지므로 반드시 연속이어야 한다.
+     */
+    private HotTopicResult excludeEndedVotes(HotTopicResult cached) {
+        Instant now = Instant.now(clock);
+
+        List<HotTopicItem> items = new ArrayList<>();
+        for (HotTopicItem item : cached.items()) {
+            if (!item.endAt().isAfter(now)) {
+                continue;
+            }
+            items.add(new HotTopicItem(
+                    items.size() + 1,
+                    item.voteId(),
+                    item.thumbnailUrl(),
+                    item.title(),
+                    item.content(),
+                    item.participantCount(),
+                    item.endAt()
             ));
         }
 
@@ -245,7 +301,4 @@ public class HomeVoteQueryService implements HomeVoteQueryUseCase {
         };
     }
 
-    private double calculatePopularityScore(long participantCount, long viewCount) {
-        return (participantCount * PARTICIPANT_WEIGHT) + (viewCount * VIEW_WEIGHT);
-    }
 }
