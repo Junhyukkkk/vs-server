@@ -2,6 +2,7 @@ package com.ject.vs.vote.adapter.web;
 
 import com.ject.vs.analytics.AnalyticsEvent;
 import com.ject.vs.analytics.AnalyticsEventLogger;
+import com.ject.vs.analytics.ElapsedMillis;
 import com.ject.vs.config.AnonymousId;
 import com.ject.vs.experiment.AbTestAssigner;
 import com.ject.vs.experiment.AbVariant;
@@ -9,8 +10,8 @@ import com.ject.vs.vote.adapter.web.dto.ImmersiveFeedResponse;
 import com.ject.vs.vote.adapter.web.dto.ImmersiveLiveResponse;
 import com.ject.vs.vote.adapter.web.dto.ImmersiveNextRequest;
 import com.ject.vs.vote.adapter.web.dto.ImmersiveNextResponse;
+import com.ject.vs.vote.adapter.web.dto.ImmersiveParticipateRequest;
 import com.ject.vs.vote.adapter.web.dto.ImmersiveParticipateResponse;
-import com.ject.vs.vote.adapter.web.dto.ParticipateRequest;
 import com.ject.vs.vote.adapter.web.dto.ShareLinkResponse;
 import com.ject.vs.vote.domain.VoteSortType;
 import com.ject.vs.vote.port.in.ImmersiveVoteCommandUseCase;
@@ -69,16 +70,21 @@ public class ImmersiveVoteController {
         return response;
     }
 
-    @Operation(summary = "투표 참여/취소", description = "투표에 참여하거나 같은 옵션 재클릭 시 취소합니다. 비회원은 5회까지 무료 투표 가능합니다.")
+    @Operation(summary = "투표 참여/취소",
+            description = "투표에 참여하거나 같은 옵션 재클릭 시 취소합니다. 비회원은 5회까지 무료 투표 가능합니다. "
+                    + "A/B 지표용으로 impressionId·elapsedMs(Time to Vote)를 함께 보낼 수 있습니다. "
+                    + "두 값은 선택이며, 없거나 비정상이어도 투표는 정상 처리되고 해당 지표만 비워집니다.")
     @PostMapping("/{voteId}/participate")
     public ImmersiveParticipateResponse participateOrCancel(
             @PathVariable Long voteId,
             @AuthenticationPrincipal Long userId,
             @Parameter(hidden = true) @AnonymousId String anonymousId,
-            @RequestBody @Valid ParticipateRequest request) {
+            @RequestBody @Valid ImmersiveParticipateRequest request) {
         ImmersiveVoteCommandUseCase.ImmersiveParticipateResult result =
                 immersiveVoteCommandUseCase.participateOrCancel(voteId, userId, anonymousId, request.optionId());
 
+        // time_to_vote_ms는 action=VOTED인 건만 Time to Vote로 센다. 취소(CANCELED)에도 값이 실릴 수
+        // 있으나 "노출 → 투표"가 아니므로 집계 쿼리에서 action으로 걸러낸다.
         analytics.log(AnalyticsEvent.of("immersive_vote_participated")
                 .anonymousId(anonymousId)
                 .put("vote_id", result.voteId())
@@ -87,6 +93,8 @@ public class ImmersiveVoteController {
                 .put("selected_option_id", result.selectedOptionId())
                 .put("remaining_free_votes", result.remainingFreeVotes())
                 .put("vote_type", VOTE_TYPE_IMMERSIVE)
+                .put("impression_id", request.impressionId())
+                .put("time_to_vote_ms", ElapsedMillis.normalize(request.elapsedMs()))
                 .put("variant", variantOf(anonymousId).name()));
 
         return ImmersiveParticipateResponse.from(result);
