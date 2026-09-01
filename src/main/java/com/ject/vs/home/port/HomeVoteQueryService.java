@@ -64,7 +64,8 @@ public class HomeVoteQueryService implements HomeVoteQueryUseCase, HotTopicRefre
      * 핫토픽 TOP 5 조회.
      *
      * <p>순위는 3시간마다 갱신되는 캐시에서 읽는다. 갱신 주기 사이에 종료된 투표는
-     * 응답 시점에 제외하고 남은 투표에 순위를 다시 매긴다.
+     * 응답 시점에 제외하고 남은 투표에 순위를 다시 매긴다. 참여 인원수는 캐시에 담긴
+     * 값이 아니라 응답 시점에 다시 집계한 값을 내보낸다.
      */
     @Override
     public HotTopicResult getHotTopics() {
@@ -72,7 +73,7 @@ public class HomeVoteQueryService implements HomeVoteQueryUseCase, HotTopicRefre
         if (cached == null) {
             cached = computeAndCacheHotTopics();
         }
-        return excludeEndedVotes(cached);
+        return applyLiveParticipantCounts(excludeEndedVotes(cached));
     }
 
     @Override
@@ -175,6 +176,42 @@ public class HomeVoteQueryService implements HomeVoteQueryUseCase, HotTopicRefre
                     item.endAt()
             ));
         }
+
+        return new HotTopicResult(items);
+    }
+
+    /**
+     * 참여 인원수만은 캐시된 값 대신 응답 시점의 실제 값을 내보낸다.
+     *
+     * <p>순위를 3시간 주기로 고정하는 것은 기획 의도지만, 인원수까지 그 주기에 묶이면
+     * 투표하고 홈으로 돌아와도 다음 갱신 시각까지 숫자가 그대로라 방금 넣은 내 표가 반영되지 않은 것처럼 보인다.
+     */
+    private HotTopicResult applyLiveParticipantCounts(HotTopicResult ranking) {
+        if (ranking.items().isEmpty()) {
+            return ranking;
+        }
+
+        List<Long> voteIds = ranking.items().stream().map(HotTopicItem::voteId).toList();
+
+        Map<Long, Long> participantCounts = voteParticipationRepository
+                .countByVoteIds(voteIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        VoteParticipationRepository.VoteParticipantCount::voteId,
+                        VoteParticipationRepository.VoteParticipantCount::count
+                ));
+
+        List<HotTopicItem> items = ranking.items().stream()
+                .map(item -> new HotTopicItem(
+                        item.rank(),
+                        item.voteId(),
+                        item.thumbnailUrl(),
+                        item.title(),
+                        item.content(),
+                        participantCounts.getOrDefault(item.voteId(), 0L),
+                        item.endAt()
+                ))
+                .toList();
 
         return new HotTopicResult(items);
     }

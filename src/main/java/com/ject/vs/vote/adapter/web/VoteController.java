@@ -9,6 +9,7 @@ import com.ject.vs.vote.domain.VoteParticipationRepository;
 import com.ject.vs.vote.domain.VoteSortType;
 import com.ject.vs.vote.exception.UnauthorizedException;
 import com.ject.vs.vote.port.VoteDetailQueryService;
+import com.ject.vs.vote.port.VoteViewCountService;
 import com.ject.vs.vote.port.in.VoteCommandUseCase;
 import com.ject.vs.vote.port.in.VoteParticipationQueryUseCase;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,6 +34,7 @@ public class VoteController {
 
     private final VoteCommandUseCase voteCommandUseCase;
     private final VoteDetailQueryService voteDetailQueryService;
+    private final VoteViewCountService voteViewCountService;
     private final VoteParticipationQueryUseCase voteParticipationQueryUseCase;
     private final AnalyticsEventLogger analytics;
 
@@ -75,6 +77,9 @@ public class VoteController {
             @AuthenticationPrincipal Long userId,
             @Parameter(hidden = true) @AnonymousId String anonymousId) {
         VoteDetailResponse response = VoteDetailResponse.from(voteDetailQueryService.getDetail(voteId, userId, anonymousId));
+
+        // 조회가 성립한 뒤에 센다. 없는 투표는 위에서 예외로 끝나 조회수에 잡히지 않는다.
+        voteViewCountService.countView(voteId);
 
         analytics.log(AnalyticsEvent.of("vote_detail_viewed")
                 .anonymousId(anonymousId)
