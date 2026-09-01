@@ -6,6 +6,13 @@ import lombok.NoArgsConstructor;
 
 import static lombok.AccessLevel.PROTECTED;
 
+/**
+ * 투표 조회수.
+ *
+ * <p>행 생성과 조회수 증가는 {@link VoteStatisticsRepository}의 SQL로 처리한다.
+ * 엔티티를 읽어 필드를 더하고 저장하면 같은 투표를 동시에 연 요청끼리 서로의 증가를 덮어써
+ * 조회수가 샌다. 여기 쓰기 메서드를 두지 않는 이유다.
+ */
 @Entity
 @Table(name = "vote_statistics")
 @Getter
@@ -22,16 +29,4 @@ public class VoteStatistics {
     @MapsId
     @JoinColumn(name = "vote_id")
     private Vote vote;
-
-    public static VoteStatistics create(Vote vote) {
-        VoteStatistics stats = new VoteStatistics();
-        stats.vote = vote;
-        stats.voteId = vote.getId();
-        stats.viewCount = 0L;
-        return stats;
-    }
-
-    public void incrementViewCount() {
-        this.viewCount++;
-    }
 }
