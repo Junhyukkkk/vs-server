@@ -66,6 +66,9 @@ public class HomeVoteQueryService implements HomeVoteQueryUseCase, HotTopicRefre
      * <p>순위는 3시간마다 갱신되는 캐시에서 읽는다. 갱신 주기 사이에 종료된 투표는
      * 응답 시점에 제외하고 남은 투표에 순위를 다시 매긴다. 참여 인원수는 캐시에 담긴
      * 값이 아니라 응답 시점에 다시 집계한 값을 내보낸다.
+     *
+     * <p>다만 내보낼 순위가 비면 다음 갱신 시각을 기다리지 않고 그 자리에서 다시 계산한다.
+     * 아래 {@link #rankingNeverEmptyWhileVotesExist(HotTopicResult)} 참고.
      */
     @Override
     public HotTopicResult getHotTopics() {
@@ -73,7 +76,30 @@ public class HomeVoteQueryService implements HomeVoteQueryUseCase, HotTopicRefre
         if (cached == null) {
             cached = computeAndCacheHotTopics();
         }
-        return applyLiveParticipantCounts(excludeEndedVotes(cached));
+
+        HotTopicResult ranking = rankingNeverEmptyWhileVotesExist(excludeEndedVotes(cached));
+        return applyLiveParticipantCounts(ranking);
+    }
+
+    /**
+     * 내보낼 순위가 비었으면 그 자리에서 다시 계산한다.
+     *
+     * <p>순위가 비는 경우는 둘이다. 진행 중인 투표가 하나도 없을 때 계산돼 빈 목록이 그대로
+     * 캐시된 경우와, 캐시에 담겼던 투표가 갱신 주기 사이에 전부 종료된 경우다. 둘 다
+     * 그대로 두면 진행 중인 투표가 멀쩡히 있는데도 다음 갱신 시각(KST 0/3/6…시)까지 최대
+     * 3시간 동안 홈의 핫토픽 영역이 통째로 비어 보인다. 투표를 새로 올리고 홈을 열어봐도
+     * 아무것도 안 뜨니, 순위 갱신 주기가 아니라 서비스가 고장 난 것처럼 보인다.
+     *
+     * <p>재계산은 순위가 빌 때만 한다. 진행 중인 투표가 정말 없으면 {@code findOngoingVotes}가
+     * 빈 목록을 돌려주고 곧장 끝나므로 매 요청 부담도 크지 않다. 재계산 결과를 캐시에 덮어쓰기
+     * 때문에 그 시점부터 3시간 주기가 다시 시작되는데, 순위를 정각에 맞추는 것보다
+     * 핫토픽이 비지 않는 쪽이 중요해서 이렇게 둔다.
+     */
+    private HotTopicResult rankingNeverEmptyWhileVotesExist(HotTopicResult ranking) {
+        if (!ranking.items().isEmpty()) {
+            return ranking;
+        }
+        return excludeEndedVotes(computeAndCacheHotTopics());
     }
 
     @Override
