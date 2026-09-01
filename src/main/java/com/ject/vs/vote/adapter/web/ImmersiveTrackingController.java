@@ -8,6 +8,7 @@ import com.ject.vs.experiment.AbTestAssigner;
 import com.ject.vs.experiment.AbVariant;
 import com.ject.vs.vote.adapter.web.dto.ImmersiveFirstActionRequest;
 import com.ject.vs.vote.adapter.web.dto.ImmersiveImpressionRequest;
+import com.ject.vs.vote.port.VoteViewCountService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -46,6 +47,7 @@ public class ImmersiveTrackingController {
 
     private final AnalyticsEventLogger analytics;
     private final AbTestAssigner abTestAssigner;
+    private final VoteViewCountService voteViewCountService;
 
     /**
      * 시안은 클라이언트가 보내는 값을 믿지 않고 anonymous_id로 다시 계산한다.
@@ -64,6 +66,9 @@ public class ImmersiveTrackingController {
             @PathVariable Long voteId,
             @RequestBody @Valid ImmersiveImpressionRequest request,
             @Parameter(hidden = true) @AnonymousId String anonymousId) {
+
+        // 몰입형은 상세 화면을 거치지 않는다. 콘텐츠 노출 1건이 곧 이 투표의 조회 1건이다.
+        voteViewCountService.countView(voteId);
 
         analytics.log(AnalyticsEvent.of("immersive_content_viewed")
                 .anonymousId(anonymousId)
