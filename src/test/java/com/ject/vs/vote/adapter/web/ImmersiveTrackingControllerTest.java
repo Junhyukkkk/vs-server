@@ -6,6 +6,7 @@ import com.ject.vs.analytics.LoggedAnalyticsEvent;
 import com.ject.vs.config.AnonymousIdResolver;
 import com.ject.vs.config.CookieProperties;
 import com.ject.vs.experiment.AbTestAssigner;
+import com.ject.vs.vote.port.VoteViewCountService;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -42,12 +43,14 @@ class ImmersiveTrackingControllerTest {
 
     private MockMvc mockMvc;
     private AnalyticsEventLogger analytics;
+    private VoteViewCountService voteViewCountService;
 
     @BeforeEach
     void setUp() {
         analytics = mock(AnalyticsEventLogger.class);
+        voteViewCountService = mock(VoteViewCountService.class);
         ImmersiveTrackingController controller =
-                new ImmersiveTrackingController(analytics, new AbTestAssigner());
+                new ImmersiveTrackingController(analytics, new AbTestAssigner(), voteViewCountService);
 
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setCustomArgumentResolvers(
@@ -85,6 +88,8 @@ class ImmersiveTrackingControllerTest {
                 .containsEntry("impression_id", IMPRESSION_ID)
                 .containsEntry("position", 3);
         assertThat(properties.get("variant")).isIn("A", "B");
+        // 몰입형은 상세 화면을 거치지 않는다. 콘텐츠 노출 1건이 곧 이 투표의 조회 1건이다.
+        verify(voteViewCountService).countView(77L);
     }
 
     @Test

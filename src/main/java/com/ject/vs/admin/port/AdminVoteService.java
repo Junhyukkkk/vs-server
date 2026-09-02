@@ -2,7 +2,6 @@ package com.ject.vs.admin.port;
 
 import com.ject.vs.admin.adapter.web.dto.AdminVoteForm;
 import com.ject.vs.admin.adapter.web.dto.AdminVoteRow;
-import com.ject.vs.config.AdminProperties;
 import com.ject.vs.image.port.ImageService;
 import com.ject.vs.vote.domain.Vote;
 import com.ject.vs.vote.domain.VoteOption;
@@ -37,15 +36,8 @@ public class AdminVoteService {
     private final VoteRepository voteRepository;
     private final VoteOptionRepository voteOptionRepository;
     private final VoteParticipationRepository voteParticipationRepository;
-    private final AdminProperties adminProperties;
     private final Optional<ImageService> imageService;
     private final Clock clock;
-
-    public boolean isAdmin(Long userId) {
-        return userId != null
-                && adminProperties.userIds() != null
-                && adminProperties.userIds().contains(userId);
-    }
 
     /** S3 설정이 없으면 파일 업로드를 쓸 수 없고 URL 직접 입력만 가능하다. */
     public boolean isImageUploadAvailable() {
