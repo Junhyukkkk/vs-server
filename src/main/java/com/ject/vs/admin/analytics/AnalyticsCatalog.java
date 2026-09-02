@@ -1,9 +1,11 @@
 package com.ject.vs.admin.analytics;
 
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static com.ject.vs.admin.analytics.AnalyticsMetricDef.count;
 import static com.ject.vs.admin.analytics.AnalyticsMetricDef.derived;
@@ -107,6 +109,18 @@ public final class AnalyticsCatalog {
         return ALL.stream().filter(m -> m.id().equals(id)).findFirst();
     }
 
+    /** 주어진 지표 id들 중 하나라도 속한 그룹 이름들. 사이드바에서 선택된 지표가 있는 그룹만 펼쳐두는 데 쓴다. */
+    public static Set<String> groupsContainingAny(List<String> metricIds) {
+        Set<String> ids = Set.copyOf(metricIds);
+        Set<String> groups = new java.util.LinkedHashSet<>();
+        for (AnalyticsMetricDef def : ALL) {
+            if (ids.contains(def.id())) {
+                groups.add(def.groupLabel());
+            }
+        }
+        return groups;
+    }
+
     /** 화면 체크박스를 그룹별로 묶어 렌더링하기 위한 형태. 카탈로그에 등장하는 순서를 그대로 유지한다. */
     public static Map<String, List<AnalyticsMetricDef>> byGroup() {
         Map<String, List<AnalyticsMetricDef>> grouped = new LinkedHashMap<>();
@@ -126,5 +140,27 @@ public final class AnalyticsCatalog {
             }
         }
         return List.copyOf(byKey.values());
+    }
+
+    /**
+     * 쪼개기 속성 키 → 그 속성을 실제로 갖는 지표 id들(공백 구분 문자열). 화면의 "쪼개서 보기" 드롭다운을
+     * 체크한 지표에 맞게 좁히는 자바스크립트가 각 {@code <option>}의 {@code data-metrics} 속성으로 그대로 쓴다.
+     *
+     * <p>드롭다운 하나가 모든 지표에 공통으로 걸려 있다 보니, "시안(A/B)"처럼 몰입형 지표에만 있는 속성을
+     * 골라도 채팅·알림 같은 다른 지표엔 아무 효과가 없어 헷갈린다는 피드백으로 추가했다. 체크한 지표에
+     * 해당 속성이 있는 경우에만 그 옵션을 고를 수 있게 하면, 애초에 안 맞는 조합을 고를 수가 없다.
+     */
+    public static Map<String, String> breakdownApplicability() {
+        Map<String, LinkedHashSet<String>> byKey = new LinkedHashMap<>();
+        for (AnalyticsMetricDef def : ALL) {
+            for (AnalyticsBreakdown b : def.breakdowns()) {
+                byKey.computeIfAbsent(b.propertyKey(), k -> new LinkedHashSet<>()).add(def.id());
+            }
+        }
+        Map<String, String> joined = new LinkedHashMap<>();
+        for (Map.Entry<String, LinkedHashSet<String>> e : byKey.entrySet()) {
+            joined.put(e.getKey(), String.join(" ", e.getValue()));
+        }
+        return joined;
     }
 }

@@ -1,6 +1,6 @@
 package com.ject.vs.admin.analytics;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -30,18 +30,18 @@ final class SvgChartRenderer {
             "#3b5bfd", "#e07a1f", "#1f9d6b", "#d1425c", "#8a5bd6", "#1fa0ad", "#c98a1f"
     };
 
-    private static final DateTimeFormatter AXIS_FORMAT = DateTimeFormatter.ofPattern("MM/dd");
-
     private SvgChartRenderer() {
     }
 
     /**
-     * @param days         x축에 올릴 날짜(오름차순, 빈 날짜 없이 연속).
+     * @param buckets      x축에 올릴 시간 구간(오름차순, 빈 구간 없이 연속). 조회 기간에 따라 일 단위·시간 단위 둘 다 올 수 있다.
      * @param seriesLabels 그릴 시리즈 이름(범례 겸 팔레트 인덱스 순서).
-     * @param values       시리즈명 → (날짜 → 값). 값이 없는 (시리즈, 날짜)는 0으로 취급.
+     * @param values       시리즈명 → (구간 → 값). 값이 없는 (시리즈, 구간)은 0으로 취급.
+     * @param axisFormat   x축 라벨 형식. 일 단위면 "MM/dd", 시간 단위면 "MM/dd HH:mm" 등 호출부가 정한다.
      */
-    static String render(List<LocalDate> days, List<String> seriesLabels, Map<String, Map<LocalDate, Double>> values) {
-        if (days.isEmpty() || seriesLabels.isEmpty()) {
+    static String render(List<LocalDateTime> buckets, List<String> seriesLabels,
+                          Map<String, Map<LocalDateTime, Double>> values, DateTimeFormatter axisFormat) {
+        if (buckets.isEmpty() || seriesLabels.isEmpty()) {
             return "<p class=\"empty\">표시할 데이터가 없습니다.</p>";
         }
 
@@ -63,24 +63,24 @@ final class SvgChartRenderer {
         svg.append(text(PAD_LEFT - 6, HEIGHT - PAD_BOTTOM, "0", "end"));
         svg.append(text(PAD_LEFT - 6, PAD_TOP + 4, formatAxisValue(yMax), "end"));
 
-        // x축 날짜 라벨(최대 7개, 균등 간격)
-        int dayCount = days.size();
-        int labelStep = Math.max(1, (int) Math.ceil(dayCount / (double) MAX_X_LABELS));
-        for (int i = 0; i < dayCount; i += labelStep) {
-            double x = PAD_LEFT + (dayCount == 1 ? plotWidth / 2.0 : plotWidth * i / (double) (dayCount - 1));
-            svg.append(text(x, HEIGHT - PAD_BOTTOM + 16, AXIS_FORMAT.format(days.get(i)), "middle"));
+        // x축 시간 라벨(최대 7개, 균등 간격)
+        int bucketCount = buckets.size();
+        int labelStep = Math.max(1, (int) Math.ceil(bucketCount / (double) MAX_X_LABELS));
+        for (int i = 0; i < bucketCount; i += labelStep) {
+            double x = PAD_LEFT + (bucketCount == 1 ? plotWidth / 2.0 : plotWidth * i / (double) (bucketCount - 1));
+            svg.append(text(x, HEIGHT - PAD_BOTTOM + 16, axisFormat.format(buckets.get(i)), "middle"));
         }
 
         // 시리즈별 선
         for (int s = 0; s < seriesLabels.size(); s++) {
             String label = seriesLabels.get(s);
             String color = PALETTE[s % PALETTE.length];
-            Map<LocalDate, Double> series = values.getOrDefault(label, Map.of());
+            Map<LocalDateTime, Double> series = values.getOrDefault(label, Map.of());
 
             StringBuilder points = new StringBuilder();
-            for (int i = 0; i < dayCount; i++) {
-                double x = PAD_LEFT + (dayCount == 1 ? plotWidth / 2.0 : plotWidth * i / (double) (dayCount - 1));
-                double v = series.getOrDefault(days.get(i), 0.0);
+            for (int i = 0; i < bucketCount; i++) {
+                double x = PAD_LEFT + (bucketCount == 1 ? plotWidth / 2.0 : plotWidth * i / (double) (bucketCount - 1));
+                double v = series.getOrDefault(buckets.get(i), 0.0);
                 double y = HEIGHT - PAD_BOTTOM - (v / yMax) * plotHeight;
                 if (i > 0) points.append(' ');
                 points.append(round1(x)).append(',').append(round1(y));
