@@ -2,6 +2,7 @@ package com.ject.vs.admin.adapter.web;
 
 import com.ject.vs.admin.adapter.web.dto.AdminVoteForm;
 import com.ject.vs.admin.adapter.web.dto.DurationOption;
+import com.ject.vs.admin.port.AdminAuthorizer;
 import com.ject.vs.admin.port.AdminVoteService;
 import com.ject.vs.common.exception.BusinessException;
 import com.ject.vs.vote.port.in.VoteCommandUseCase.VoteCreateResult;
@@ -42,10 +43,11 @@ public class AdminVoteController {
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private final AdminVoteService adminVoteService;
+    private final AdminAuthorizer adminAuthorizer;
 
     @GetMapping
     public String page(@AuthenticationPrincipal Long userId, Model model, HttpServletResponse response) {
-        if (!adminVoteService.isAdmin(userId)) {
+        if (!adminAuthorizer.isAdmin(userId)) {
             return denied(userId, model, response);
         }
         AdminVoteForm form = new AdminVoteForm();
@@ -64,7 +66,7 @@ public class AdminVoteController {
                          Model model,
                          RedirectAttributes redirectAttributes,
                          HttpServletResponse response) {
-        if (!adminVoteService.isAdmin(userId)) {
+        if (!adminAuthorizer.isAdmin(userId)) {
             return denied(userId, model, response);
         }
         if (bindingResult.hasErrors()) {
