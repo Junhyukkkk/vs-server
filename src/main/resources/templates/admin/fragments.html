@@ -6,6 +6,12 @@
 </head>
 <body>
 
+<!-- 어드민 페이지 간 이동 네비게이션. topbar 안에서 오른쪽으로 밀려 붙는다(topbar-nav CSS 참고). -->
+<nav th:fragment="nav" class="topbar-nav">
+    <a href="/admin/votes">투표 생성</a>
+    <a href="/admin/analytics">이벤트 분석</a>
+</nav>
+
 <!--
   어드민 공통 스타일. 정적 리소스(/css/**)를 새로 열지 않으려고 인라인 fragment로 둔다.
   라이트/다크 모두 대응한다.
@@ -249,6 +255,111 @@
             border-radius: 4px;
             padding: 1px 5px;
             font-size: 12px;
+        }
+
+        /* ── 페이지 간 이동 네비게이션 ── */
+        .topbar-nav {
+            margin-left: auto;
+            display: flex;
+            gap: 16px;
+        }
+
+        .topbar-nav a {
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .topbar-nav a:hover { color: var(--text); }
+
+        /* ── 어드민 분석 화면 ── */
+        .filter-row {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .filter-row > .field { flex: 0 0 auto; min-width: 160px; }
+
+        .metric-group { margin-bottom: 16px; }
+
+        .metric-group h3 {
+            margin: 0 0 8px;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--muted);
+        }
+
+        .metric-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 7px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .metric-item:last-child { border-bottom: 0; }
+
+        .metric-item input[type="checkbox"] { margin-top: 3px; flex: 0 0 auto; }
+
+        .metric-item label { font-weight: 600; cursor: pointer; }
+
+        .metric-item .metric-desc {
+            display: block;
+            font-weight: 400;
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: 2px;
+        }
+
+        .metric-card { margin-bottom: 18px; }
+
+        .metric-card .metric-group-badge {
+            display: inline-block;
+            font-size: 11px;
+            color: var(--muted);
+            background: var(--chip);
+            border-radius: 999px;
+            padding: 2px 9px;
+            margin-bottom: 6px;
+        }
+
+        .metric-card .metric-summary {
+            font-size: 15px;
+            font-weight: 700;
+            margin: 4px 0 14px;
+        }
+
+        .chart-svg {
+            width: 100%;
+            height: auto;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .chart-label {
+            font-size: 10px;
+            fill: var(--muted);
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 14px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+
+        .legend-item i {
+            width: 9px;
+            height: 9px;
+            border-radius: 2px;
+            display: inline-block;
         }
     </style>
 </th:block>
