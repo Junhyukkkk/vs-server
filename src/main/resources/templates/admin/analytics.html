@@ -13,83 +13,140 @@
     <nav th:replace="~{admin/fragments :: nav}"></nav>
 </header>
 
-<main class="wrap">
+<main class="analytics-layout">
+    <aside class="analytics-sidebar">
+        <section class="card">
+            <h2>조회 조건</h2>
 
-    <section class="card">
-        <h2>조회 조건</h2>
-
-        <form action="/admin/analytics" method="get">
-            <div class="filter-row">
+            <form action="/admin/analytics" method="get" id="analytics-form">
                 <div class="field">
-                    <label for="from">시작일</label>
-                    <input type="date" id="from" name="from" th:value="${from}">
+                    <label for="from">시작 일시</label>
+                    <input type="datetime-local" id="from" name="from" th:value="${from}">
                 </div>
                 <div class="field">
-                    <label for="to">종료일</label>
-                    <input type="date" id="to" name="to" th:value="${to}">
+                    <label for="to">종료 일시</label>
+                    <input type="datetime-local" id="to" name="to" th:value="${to}">
                 </div>
+                <p class="hint">
+                    최대 92일까지 조회됩니다(넘으면 종료 일시 기준 92일로 자동 조정). 범위가 3일 이하면
+                    그래프가 시간 단위로, 그보다 길면 일 단위로 그려집니다. (기준: KST)
+                </p>
+
                 <div class="field">
-                    <label for="breakdown">쪼개서 보기</label>
+                    <label for="breakdown">그래프 색상 쪼개기</label>
                     <select id="breakdown" name="breakdown">
-                        <option th:each="b : ${breakdownOptions}"
+                        <option value="" th:selected="${selectedBreakdown == ''}">전체(안 쪼갬)</option>
+                        <option th:each="b : ${breakdownOptions}" th:if="${b.propertyKey != ''}"
                                 th:value="${b.propertyKey}" th:text="${b.label}"
+                                th:data-metrics="${breakdownApplicability.get(b.propertyKey)}"
                                 th:selected="${b.propertyKey == selectedBreakdown}"></option>
                     </select>
+                    <p class="hint">
+                        차트 색상을 어떤 값 기준으로 나눌지 고릅니다. 아래에서 체크한 지표에 실제로
+                        있는 값만 선택할 수 있어요 — 예를 들어 "시안(A/B)"은 몰입형 투표 지표에만 있습니다.
+                    </p>
                 </div>
-            </div>
-            <p class="hint">최대 92일까지 조회됩니다. 넘게 입력하면 종료일 기준 92일로 자동 조정됩니다. (기준: KST)</p>
 
-            <div th:each="entry : ${groups}" class="metric-group">
-                <h3 th:text="${entry.key}"></h3>
-                <div th:each="m : ${entry.value}" class="metric-item">
-                    <input type="checkbox" th:id="${'m-' + m.id}" name="metrics" th:value="${m.id}"
-                           th:checked="${selectedMetrics.contains(m.id)}">
-                    <label th:for="${'m-' + m.id}">
-                        <span th:text="${m.title}"></span>
-                        <span class="metric-desc" th:text="${m.description}"></span>
-                    </label>
+                <div th:each="entry : ${groups}" class="metric-group">
+                    <details th:open="${expandedGroups.contains(entry.key)}">
+                        <summary th:text="${entry.key + ' (' + entry.value.size() + ')'}"></summary>
+                        <div th:each="m : ${entry.value}" class="metric-item">
+                            <input type="checkbox" th:id="${'m-' + m.id}" name="metrics" th:value="${m.id}"
+                                   th:checked="${selectedMetrics.contains(m.id)}">
+                            <label th:for="${'m-' + m.id}">
+                                <span th:text="${m.title}"></span>
+                                <span class="metric-desc" th:text="${m.description}"></span>
+                            </label>
+                        </div>
+                    </details>
                 </div>
-            </div>
 
-            <div class="actions">
-                <button type="submit" class="btn-primary">조회</button>
-            </div>
-        </form>
-    </section>
-
-    <div th:if="${result == null}" class="card">
-        <p class="empty">지표를 선택하고 조회를 누르면 여기 표와 그래프가 나타납니다.</p>
-    </div>
-
-    <div th:if="${result != null}">
-        <p class="hint" th:text="${result.from} + ' ~ ' + ${result.to} + ' (KST)'"></p>
-        <p class="empty" th:if="${#lists.isEmpty(result.metrics)}">선택한 지표가 없습니다.</p>
-
-        <section class="card metric-card" th:each="metric : ${result.metrics}">
-            <span class="metric-group-badge" th:text="${metric.def.groupLabel}"></span>
-            <h2 th:text="${metric.def.title}"></h2>
-            <p class="hint" th:text="${metric.def.description}"></p>
-            <p class="metric-summary" th:text="${metric.summary}"></p>
-
-            <div th:utext="${metric.chartSvg}"></div>
-            <div th:utext="${metric.legendHtml}"></div>
-
-            <div class="table-scroll">
-                <table>
-                    <thead>
-                    <tr>
-                        <th th:each="h : ${metric.tableHeaders}" th:text="${h}"></th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr th:each="row : ${metric.tableRows}">
-                        <td th:each="cell : ${row}" th:text="${cell}"></td>
-                    </tr>
-                    </tbody>
-                </table>
-            </div>
+                <div class="actions">
+                    <button type="submit" class="btn-primary">조회</button>
+                </div>
+            </form>
         </section>
+    </aside>
+
+    <div class="analytics-results">
+        <div th:if="${result == null}" class="card">
+            <p class="empty">왼쪽에서 지표를 선택하고 조회를 누르면 여기 표와 그래프가 나타납니다.</p>
+        </div>
+
+        <div th:if="${result != null}">
+            <p class="hint" th:text="${result.rangeLabel}"></p>
+            <p class="empty" th:if="${#lists.isEmpty(result.metrics)}">선택한 지표가 없습니다.</p>
+
+            <section class="card metric-card" th:each="metric : ${result.metrics}">
+                <span class="metric-group-badge" th:text="${metric.def.groupLabel}"></span>
+                <h2 th:text="${metric.def.title}"></h2>
+                <p class="hint" th:text="${metric.def.description}"></p>
+                <p class="metric-breakdown-caption" th:text="${metric.breakdownCaption}"></p>
+                <p class="metric-summary" th:text="${metric.summary}"></p>
+
+                <div th:utext="${metric.chartSvg}"></div>
+                <div th:utext="${metric.legendHtml}"></div>
+
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th th:each="h : ${metric.tableHeaders}" th:text="${h}"></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="row : ${metric.tableRows}">
+                            <td th:each="cell : ${row}" th:text="${cell}"></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
     </div>
 </main>
+
+<script>
+    // "그래프 색상 쪼개기" 드롭다운을, 지금 체크된 지표에 실제로 있는 속성만 고를 수 있게 좁힌다.
+    // 각 <option>의 data-metrics(지표 id를 공백으로 나열)와 체크된 체크박스의 value를 대조한다.
+    (function () {
+        var form = document.getElementById('analytics-form');
+        var breakdownSelect = document.getElementById('breakdown');
+        if (!form || !breakdownSelect) return;
+
+        function checkedMetricIds() {
+            return Array.prototype.map.call(
+                form.querySelectorAll('input[name="metrics"]:checked'),
+                function (el) { return el.value; }
+            );
+        }
+
+        function syncBreakdownOptions() {
+            var checked = checkedMetricIds();
+            var options = breakdownSelect.querySelectorAll('option');
+            var selectedStillValid = false;
+
+            Array.prototype.forEach.call(options, function (opt) {
+                var metricsAttr = opt.getAttribute('data-metrics');
+                var applies = opt.value === '' || !metricsAttr || metricsAttr.split(' ').some(function (id) {
+                    return checked.indexOf(id) !== -1;
+                });
+                opt.disabled = !applies;
+                opt.hidden = !applies;
+                if (applies && opt.selected) selectedStillValid = true;
+            });
+
+            // 체크 상태가 바뀌어 지금 골라둔 쪼개기 기준이 더는 안 맞으면 "전체"로 되돌린다.
+            if (!selectedStillValid) {
+                breakdownSelect.value = '';
+            }
+        }
+
+        form.addEventListener('change', function (e) {
+            if (e.target && e.target.name === 'metrics') syncBreakdownOptions();
+        });
+        syncBreakdownOptions();
+    })();
+</script>
 </body>
 </html>
