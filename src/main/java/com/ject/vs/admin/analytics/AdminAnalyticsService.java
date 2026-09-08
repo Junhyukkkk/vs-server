@@ -4,6 +4,7 @@ import com.ject.vs.analytics.AnalyticsEventRepository;
 import com.ject.vs.analytics.AnalyticsEventRepository.BucketAvgRow;
 import com.ject.vs.analytics.AnalyticsEventRepository.BucketBounceRow;
 import com.ject.vs.analytics.AnalyticsEventRepository.BucketCountRow;
+import com.ject.vs.analytics.AnalyticsProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,6 +53,7 @@ public class AdminAnalyticsService {
     private static final String VARIANT_FORCED_CAPTION = "쪼개기 기준: 시안(A/B) — 이 지표는 항상 시안별로 나옵니다";
 
     private final AnalyticsEventRepository analyticsEventRepository;
+    private final AnalyticsProperties analyticsProperties;
 
     public Map<String, List<AnalyticsMetricDef>> catalogGroups() {
         return AnalyticsCatalog.byGroup();
@@ -130,8 +132,17 @@ public class AdminAnalyticsService {
             case COUNT -> buildCountResult(def, ctx, breakdownKey);
             case TIME_TO_VOTE_AVG -> buildTimeToVoteResult(def, ctx);
             case BOUNCE -> buildBounceResult(def, ctx);
-            case FIRST_ACTION_DISTRIBUTION -> buildFirstActionDistributionResult(def, ctx);
+            case FIRST_ACTION_DISTRIBUTION -> firstActionDistribution(def, FIRST_ACTION_DISTRIBUTION_CAPTION,
+                    analyticsEventRepository.aggregateFirstActionDistribution(ctx.fromUtc(), ctx.toUtc()));
+            case FIRST_ACTION_DISTRIBUTION_EXCLUDING -> firstActionDistribution(def, firstActionExcludingCaption(),
+                    analyticsEventRepository.aggregateFirstActionDistributionExcluding(
+                            ctx.fromUtc(), ctx.toUtc(), analyticsProperties.excludedAnonymousIdsCsv()));
         };
+    }
+
+    private String firstActionExcludingCaption() {
+        return FIRST_ACTION_DISTRIBUTION_CAPTION
+                + " · 지정 anonymous_id " + analyticsProperties.excludedAnonymousIds().size() + "개 제외";
     }
 
     private static final String FIRST_ACTION_DISTRIBUTION_CAPTION =
@@ -147,14 +158,15 @@ public class AdminAnalyticsService {
             "SCROLL_NEXT", "다음으로 넘김");
 
     /**
-     * "몰입형 첫 행동 분포 (시안별)" — 조회 기간 전체를 한 번에 집계해, 시안(A/B)별로 첫 행동을
-     * 많은 순으로 나열한 표를 만든다. 각 열은 독립적으로 정렬되므로 같은 행의 A·B가 서로 다른 행동일 수 있다.
-     * 시간 축이 없어 추세 그래프 자리에는 안내 문구만 둔다.
+     * "몰입형 첫 행동 분포 (시안별)" 계열 지표를 조립한다. 조회 기간 전체를 한 번에 집계한 {@code rows}를 받아,
+     * 시안(A/B)별로 첫 행동을 많은 순으로 나열한 표를 만든다. 각 열은 독립적으로 정렬되므로 같은 행의 A·B가
+     * 서로 다른 행동일 수 있다. 시간 축이 없어 추세 그래프 자리에는 안내 문구만 둔다.
+     *
+     * <p>어떤 사용자를 뺄지(전체 / 지정 ID 제외)는 호출부가 어느 쿼리로 {@code rows}를 채웠느냐로 갈리고,
+     * 그 차이는 {@code caption}으로만 화면에 드러난다.
      */
-    private MetricResult buildFirstActionDistributionResult(AnalyticsMetricDef def, QueryContext ctx) {
-        List<AnalyticsEventRepository.VariantActionCountRow> rows =
-                analyticsEventRepository.aggregateFirstActionDistribution(ctx.fromUtc(), ctx.toUtc());
-
+    private MetricResult firstActionDistribution(AnalyticsMetricDef def, String caption,
+                                                 List<AnalyticsEventRepository.VariantActionCountRow> rows) {
         Map<String, List<Map.Entry<String, Long>>> actionsByVariant = new LinkedHashMap<>();
         Map<String, Long> totalByVariant = new LinkedHashMap<>();
         for (AnalyticsEventRepository.VariantActionCountRow row : rows) {
@@ -191,7 +203,7 @@ public class AdminAnalyticsService {
 
         String chart = "<p class=\"empty\">조회 기간 전체 집계 지표입니다 — 시간 추세 그래프는 없습니다.</p>";
 
-        return new MetricResult(def, FIRST_ACTION_DISTRIBUTION_CAPTION, summary, headers, tableRows, chart, "");
+        return new MetricResult(def, caption, summary, headers, tableRows, chart, "");
     }
 
     private static String distributionCell(List<Map.Entry<String, Long>> ranked, long total, int rank) {

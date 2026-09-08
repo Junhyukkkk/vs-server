@@ -24,5 +24,11 @@ public enum MetricKind {
      * {@code immersive_first_action}을 시안(variant)별로 묶고, 각 시안 안에서 행동(action)을
      * 많은 순으로 나열한 분포. 조회 기간 전체를 한 번에 집계하므로 시간 추세 그래프가 없다.
      */
-    FIRST_ACTION_DISTRIBUTION
+    FIRST_ACTION_DISTRIBUTION,
+
+    /**
+     * {@link #FIRST_ACTION_DISTRIBUTION}과 같되 {@code analytics.excluded-anonymous-ids}에
+     * 등록된 anonymous_id(내부 QA 기기 등)를 뺀 분포.
+     */
+    FIRST_ACTION_DISTRIBUTION_EXCLUDING
 }

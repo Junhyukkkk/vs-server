@@ -71,6 +71,10 @@ public final class AnalyticsCatalog {
                     "조회 기간 전체에서 시안별로 첫 행동(VOTE/CHAT/EMOJI/SHARE/EXPAND/SCROLL_NEXT)을 "
                             + "많은 순으로 나열한다. A안과 B안의 행동 분포를 나란히 비교. 시간 추세 그래프는 없다.",
                     MetricKind.FIRST_ACTION_DISTRIBUTION),
+            derived("immersive_first_action_distribution_excl", IMMERSIVE, "몰입형 첫 행동 분포 (시안별, 지정 ID 제외)",
+                    "위 지표와 동일하되 analytics.excluded-anonymous-ids에 등록한 anonymous_id(내부 QA 기기 등)를 뺀다. "
+                            + "테스터가 특정 시안 합계를 부풀리는 걸 걸러 실제 유저 분포를 본다.",
+                    MetricKind.FIRST_ACTION_DISTRIBUTION_EXCLUDING),
             count(IMMERSIVE, "immersive_live_viewed", "몰입형 실시간 현황 조회",
                     "투표 후 실시간 비율 갱신 폴링(투표함/총 참여자수)", VARIANT),
             count(IMMERSIVE, "share_link_generated", "공유 링크 생성",

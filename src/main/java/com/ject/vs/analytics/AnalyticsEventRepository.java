@@ -121,6 +121,31 @@ public interface AnalyticsEventRepository extends JpaRepository<AnalyticsEventRe
             @Param("fromUtc") Instant fromUtc,
             @Param("toUtc") Instant toUtc);
 
+    /**
+     * {@link #aggregateFirstActionDistribution}과 같되, {@code excludedCsv}(콤마로 이은 anonymous_id)에
+     * 든 사용자를 뺀다. 내부 QA 기기가 특정 시안 합계를 부풀리는 걸 걸러내는 데 쓴다.
+     *
+     * <p>{@code excludedCsv}가 빈 문자열이면 아무도 빼지 않는다. anonymous_id가 NULL인 행은
+     * 제외 판정 대상이 아니므로 그대로 남긴다.
+     */
+    @Query(value = """
+            SELECT COALESCE(NULLIF(properties::jsonb ->> 'variant', ''), '(미상)') AS variant,
+                   COALESCE(NULLIF(properties::jsonb ->> 'action', ''), '(미상)')  AS action,
+                   COUNT(*) AS eventCount
+            FROM analytics_events
+            WHERE event = 'immersive_first_action'
+              AND occurred_at >= :fromUtc
+              AND occurred_at <  :toUtc
+              AND (:excludedCsv = ''
+                   OR anonymous_id IS NULL
+                   OR NOT (anonymous_id = ANY(string_to_array(:excludedCsv, ','))))
+            GROUP BY variant, action
+            """, nativeQuery = true)
+    List<VariantActionCountRow> aggregateFirstActionDistributionExcluding(
+            @Param("fromUtc") Instant fromUtc,
+            @Param("toUtc") Instant toUtc,
+            @Param("excludedCsv") String excludedCsv);
+
     interface BucketCountRow {
         LocalDateTime getBucketTime();
 
