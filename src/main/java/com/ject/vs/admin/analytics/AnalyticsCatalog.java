@@ -67,6 +67,10 @@ public final class AnalyticsCatalog {
             derived("immersive_bounce", IMMERSIVE, "이탈 (노출만 되고 행동 없음)",
                     "immersive_content_viewed는 있는데 같은 콘텐츠의 immersive_first_action이 없는 건. 시안별로 자동 분해",
                     MetricKind.BOUNCE),
+            derived("immersive_first_action_distribution", IMMERSIVE, "몰입형 첫 행동 분포 (시안별)",
+                    "조회 기간 전체에서 시안별로 첫 행동(VOTE/CHAT/EMOJI/SHARE/EXPAND/SCROLL_NEXT)을 "
+                            + "많은 순으로 나열한다. A안과 B안의 행동 분포를 나란히 비교. 시간 추세 그래프는 없다.",
+                    MetricKind.FIRST_ACTION_DISTRIBUTION),
             count(IMMERSIVE, "immersive_live_viewed", "몰입형 실시간 현황 조회",
                     "투표 후 실시간 비율 갱신 폴링(투표함/총 참여자수)", VARIANT),
             count(IMMERSIVE, "share_link_generated", "공유 링크 생성",

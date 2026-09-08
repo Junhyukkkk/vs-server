@@ -100,6 +100,27 @@ public interface AnalyticsEventRepository extends JpaRepository<AnalyticsEventRe
             @Param("fromUtc") Instant fromUtc,
             @Param("toUtc") Instant toUtc);
 
+    /**
+     * {@code immersive_first_action}을 시안 × 행동으로 묶어 건수를 센다. 시간 버킷 없이 조회 기간 전체를 한 번에.
+     * 어드민 "몰입형 첫 행동 분포 (시안별)" 카드가 시안별 행동 순위표를 만드는 데 쓴다.
+     *
+     * <p>variant/action 속성이 비어 있으면 {@code '(미상)'}으로 묶는다. Postgres 전용({@code ::jsonb})이라
+     * 로컬 H2 프로필에서는 동작하지 않는다 — {@link #aggregateImmersiveBounce}와 같은 이유다.
+     */
+    @Query(value = """
+            SELECT COALESCE(NULLIF(properties::jsonb ->> 'variant', ''), '(미상)') AS variant,
+                   COALESCE(NULLIF(properties::jsonb ->> 'action', ''), '(미상)')  AS action,
+                   COUNT(*) AS eventCount
+            FROM analytics_events
+            WHERE event = 'immersive_first_action'
+              AND occurred_at >= :fromUtc
+              AND occurred_at <  :toUtc
+            GROUP BY variant, action
+            """, nativeQuery = true)
+    List<VariantActionCountRow> aggregateFirstActionDistribution(
+            @Param("fromUtc") Instant fromUtc,
+            @Param("toUtc") Instant toUtc);
+
     interface BucketCountRow {
         LocalDateTime getBucketTime();
 
@@ -126,5 +147,13 @@ public interface AnalyticsEventRepository extends JpaRepository<AnalyticsEventRe
         Long getViewedCount();
 
         Long getBouncedCount();
+    }
+
+    interface VariantActionCountRow {
+        String getVariant();
+
+        String getAction();
+
+        Long getEventCount();
     }
 }
