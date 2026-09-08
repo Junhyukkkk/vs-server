@@ -15,6 +15,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -23,6 +24,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 
 /**
  * 어드민 분석 화면(/admin/analytics)의 집계 서비스. 선택된 지표마다
@@ -128,6 +130,97 @@ public class AdminAnalyticsService {
             case COUNT -> buildCountResult(def, ctx, breakdownKey);
             case TIME_TO_VOTE_AVG -> buildTimeToVoteResult(def, ctx);
             case BOUNCE -> buildBounceResult(def, ctx);
+            case FIRST_ACTION_DISTRIBUTION -> buildFirstActionDistributionResult(def, ctx);
+        };
+    }
+
+    private static final String FIRST_ACTION_DISTRIBUTION_CAPTION =
+            "쪼개기 기준: 시안 × 행동 — 조회 기간 전체를 한 번에 집계합니다";
+
+    /** 첫 행동 action 원시값 → 화면에 보여줄 한글 이름. 모르는 값은 원시값을 그대로 쓴다. */
+    private static final Map<String, String> FIRST_ACTION_LABELS = Map.of(
+            "VOTE", "투표",
+            "CHAT", "채팅",
+            "EMOJI", "이모지",
+            "SHARE", "공유",
+            "EXPAND", "본문 펼쳐보기",
+            "SCROLL_NEXT", "다음으로 넘김");
+
+    /**
+     * "몰입형 첫 행동 분포 (시안별)" — 조회 기간 전체를 한 번에 집계해, 시안(A/B)별로 첫 행동을
+     * 많은 순으로 나열한 표를 만든다. 각 열은 독립적으로 정렬되므로 같은 행의 A·B가 서로 다른 행동일 수 있다.
+     * 시간 축이 없어 추세 그래프 자리에는 안내 문구만 둔다.
+     */
+    private MetricResult buildFirstActionDistributionResult(AnalyticsMetricDef def, QueryContext ctx) {
+        List<AnalyticsEventRepository.VariantActionCountRow> rows =
+                analyticsEventRepository.aggregateFirstActionDistribution(ctx.fromUtc(), ctx.toUtc());
+
+        Map<String, List<Map.Entry<String, Long>>> actionsByVariant = new LinkedHashMap<>();
+        Map<String, Long> totalByVariant = new LinkedHashMap<>();
+        for (AnalyticsEventRepository.VariantActionCountRow row : rows) {
+            actionsByVariant.computeIfAbsent(row.getVariant(), k -> new ArrayList<>())
+                    .add(Map.entry(row.getAction(), row.getEventCount()));
+            totalByVariant.merge(row.getVariant(), row.getEventCount(), Long::sum);
+        }
+        actionsByVariant.values().forEach(list -> list.sort(
+                Comparator.comparingLong((Map.Entry<String, Long> e) -> e.getValue()).reversed()
+                        .thenComparing(Map.Entry::getKey)));
+
+        List<String> variants = orderVariants(actionsByVariant.keySet());
+
+        List<String> headers = new ArrayList<>();
+        headers.add("순위");
+        variants.forEach(v -> headers.add(variantColumnLabel(v)));
+
+        int maxRank = actionsByVariant.values().stream().mapToInt(List::size).max().orElse(0);
+        List<List<String>> tableRows = new ArrayList<>();
+        for (int rank = 0; rank < maxRank; rank++) {
+            List<String> row = new ArrayList<>();
+            row.add((rank + 1) + "위");
+            for (String variant : variants) {
+                row.add(distributionCell(actionsByVariant.get(variant), totalByVariant.getOrDefault(variant, 0L), rank));
+            }
+            tableRows.add(row);
+        }
+
+        String summary = variants.isEmpty()
+                ? "첫 행동 없음"
+                : variants.stream()
+                        .map(v -> "%s %s건".formatted(variantColumnLabel(v), format(totalByVariant.getOrDefault(v, 0L))))
+                        .collect(Collectors.joining(" · "));
+
+        String chart = "<p class=\"empty\">조회 기간 전체 집계 지표입니다 — 시간 추세 그래프는 없습니다.</p>";
+
+        return new MetricResult(def, FIRST_ACTION_DISTRIBUTION_CAPTION, summary, headers, tableRows, chart, "");
+    }
+
+    private static String distributionCell(List<Map.Entry<String, Long>> ranked, long total, int rank) {
+        if (ranked == null || rank >= ranked.size() || total == 0) {
+            return "-";
+        }
+        Map.Entry<String, Long> entry = ranked.get(rank);
+        int pct = (int) Math.round(entry.getValue() * 100.0 / total);
+        return "%s %d%% (%s건)".formatted(
+                FIRST_ACTION_LABELS.getOrDefault(entry.getKey(), entry.getKey()), pct, format(entry.getValue()));
+    }
+
+    /** 열 순서: A안·B안을 앞에 두고(있는 경우), 나머지 시안 값은 뒤에 문자열 순으로 붙인다. */
+    private static List<String> orderVariants(Set<String> present) {
+        List<String> ordered = new ArrayList<>();
+        for (String known : List.of("A", "B")) {
+            if (present.contains(known)) {
+                ordered.add(known);
+            }
+        }
+        present.stream().filter(v -> !ordered.contains(v)).sorted().forEach(ordered::add);
+        return ordered;
+    }
+
+    private static String variantColumnLabel(String variant) {
+        return switch (variant) {
+            case "A" -> "A안";
+            case "B" -> "B안";
+            default -> variant;
         };
     }
 

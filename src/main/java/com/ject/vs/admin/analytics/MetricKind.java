@@ -18,5 +18,11 @@ public enum MetricKind {
      * {@code immersive_content_viewed}는 있는데 같은 impression_id의
      * {@code immersive_first_action}이 없는 노출("이탈"). 항상 시안(variant)별로 쪼개진다.
      */
-    BOUNCE
+    BOUNCE,
+
+    /**
+     * {@code immersive_first_action}을 시안(variant)별로 묶고, 각 시안 안에서 행동(action)을
+     * 많은 순으로 나열한 분포. 조회 기간 전체를 한 번에 집계하므로 시간 추세 그래프가 없다.
+     */
+    FIRST_ACTION_DISTRIBUTION
 }
