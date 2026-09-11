@@ -55,18 +55,25 @@ public final class AnalyticsCatalog {
             count(IMMERSIVE, "immersive_feed_viewed", "몰입형 피드 로드",
                     "스와이프 피드를 한 번 불러옴(약 10개 콘텐츠 묶음 단위)", VARIANT),
             count(IMMERSIVE, "immersive_content_viewed", "몰입형 콘텐츠 노출",
-                    "몰입형 콘텐츠 1건이 화면에 실제로 노출됨 — ① 투표 전환율의 분모", VARIANT),
+                    "몰입형 콘텐츠 1건이 화면에 실제로 노출됨 — 노출 이벤트 건수(한 사람이 여러 번 볼 수 있음). "
+                            + "사람 수 기준 전환율은 '몰입형 투표 전환율 (시안별, 사람 수 기준)' 참고", VARIANT),
             count(IMMERSIVE, "immersive_first_action", "몰입형 첫 행동",
                     "노출 1건에서 사용자가 가장 먼저 한 행동 — ③ 첫 행동 분포"
                             + "(action: VOTE/CHAT/EMOJI/SHARE/EXPAND/SCROLL_NEXT)", VARIANT, ACTION),
             count(IMMERSIVE, "immersive_vote_participated", "몰입형 투표 참여/취소",
-                    "몰입형 투표 참여 또는 취소 — ① 전환율의 분자(action=VOTED)", VARIANT, ACTION),
+                    "몰입형 투표 참여 또는 취소 — 참여 이벤트 건수(action=VOTED). "
+                            + "사람 수 기준 전환율은 '몰입형 투표 전환율 (시안별, 사람 수 기준)' 참고", VARIANT, ACTION),
             derived("immersive_time_to_vote", IMMERSIVE, "② Time to Vote (평균)",
                     "콘텐츠 노출부터 실제 투표까지 걸린 평균 시간(초). action=VOTED 건만, 시안별로 자동 분해",
                     MetricKind.TIME_TO_VOTE_AVG),
             derived("immersive_bounce", IMMERSIVE, "이탈 (노출만 되고 행동 없음)",
                     "immersive_content_viewed는 있는데 같은 콘텐츠의 immersive_first_action이 없는 건. 시안별로 자동 분해",
                     MetricKind.BOUNCE),
+            derived("immersive_vote_conversion_by_person", IMMERSIVE, "몰입형 투표 전환율 (시안별, 사람 수 기준)",
+                    "노출 이벤트 건수가 아니라 그 시안을 본 서로 다른 사람 수를 분모로, 그중 실제로 투표한 "
+                            + "사람 수를 분자로 삼는다. 한 사람이 콘텐츠를 여러 번 봐도 분모가 늘지 않는다. "
+                            + "조회 기간 전체를 한 번에 집계한다.",
+                    MetricKind.VOTE_CONVERSION_BY_PERSON),
             derived("immersive_first_action_distribution", IMMERSIVE, "몰입형 첫 행동 분포 (시안별)",
                     "조회 기간 전체에서 시안별로 첫 행동(VOTE/CHAT/EMOJI/SHARE/EXPAND/SCROLL_NEXT)을 "
                             + "많은 순으로 나열한다. A안과 B안의 행동 분포를 나란히 비교. 시간 추세 그래프는 없다.",

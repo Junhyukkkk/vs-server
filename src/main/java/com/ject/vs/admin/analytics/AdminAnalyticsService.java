@@ -137,7 +137,63 @@ public class AdminAnalyticsService {
             case FIRST_ACTION_DISTRIBUTION_EXCLUDING -> firstActionDistribution(def, firstActionExcludingCaption(),
                     analyticsEventRepository.aggregateFirstActionDistributionExcluding(
                             ctx.fromUtc(), ctx.toUtc(), analyticsProperties.excludedAnonymousIdsCsv()));
+            case VOTE_CONVERSION_BY_PERSON -> buildVoteConversionByPersonResult(def, ctx);
         };
+    }
+
+    private static final String VOTE_CONVERSION_BY_PERSON_CAPTION =
+            "쪼개기 기준: 시안별 (사람 수 기준) — 조회 기간 전체를 한 번에 집계합니다";
+
+    private record VariantCounts(long viewers, long voters) {
+    }
+
+    /**
+     * "몰입형 투표 전환율 (시안별, 사람 수 기준)" — 노출 이벤트 건수 대신 그 시안을 본 서로 다른 사람 수를
+     * 분모로, 그중 실제로 투표한 사람 수를 분자로 삼는다. 한 사람이 콘텐츠를 몇 번 보든 분모에는 1로만
+     * 잡혀서, 파워유저 한 명이 노출 건수를 부풀려 전환율을 왜곡하는 걸 피한다. 조회 기간 전체를
+     * 한 번에 집계하므로 시간 축이 없다.
+     */
+    private MetricResult buildVoteConversionByPersonResult(AnalyticsMetricDef def, QueryContext ctx) {
+        List<AnalyticsEventRepository.VariantConversionRow> rows =
+                analyticsEventRepository.aggregateVoteConversionByPerson(ctx.fromUtc(), ctx.toUtc());
+
+        Map<String, VariantCounts> byVariant = new LinkedHashMap<>();
+        for (AnalyticsEventRepository.VariantConversionRow row : rows) {
+            byVariant.put(row.getVariant(), new VariantCounts(row.getViewerCount(), row.getVoterCount()));
+        }
+
+        List<String> variants = orderVariants(byVariant.keySet());
+
+        List<String> headers = List.of("시안", "본 사람", "투표한 사람", "전환율");
+        List<List<String>> tableRows = new ArrayList<>();
+        for (String variant : variants) {
+            VariantCounts counts = byVariant.get(variant);
+            tableRows.add(List.of(
+                    variantColumnLabel(variant),
+                    format(counts.viewers()),
+                    format(counts.voters()),
+                    conversionRateLabel(counts)));
+        }
+
+        String summary = variants.isEmpty()
+                ? "노출 없음"
+                : variants.stream()
+                        .map(v -> {
+                            VariantCounts counts = byVariant.get(v);
+                            return "%s %s (%s/%s)".formatted(variantColumnLabel(v), conversionRateLabel(counts),
+                                    format(counts.voters()), format(counts.viewers()));
+                        })
+                        .collect(Collectors.joining(" · "));
+
+        String chart = "<p class=\"empty\">조회 기간 전체 집계 지표입니다 — 시간 추세 그래프는 없습니다.</p>";
+
+        return new MetricResult(def, VOTE_CONVERSION_BY_PERSON_CAPTION, summary, headers, tableRows, chart, "");
+    }
+
+    /** 본 사람이 0명이면 0으로 나누지 않고 0.0%로 둔다. */
+    private static String conversionRateLabel(VariantCounts counts) {
+        double rate = counts.viewers() == 0 ? 0.0 : counts.voters() * 100.0 / counts.viewers();
+        return "%.1f%%".formatted(rate);
     }
 
     private String firstActionExcludingCaption() {
