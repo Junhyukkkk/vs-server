@@ -30,5 +30,13 @@ public enum MetricKind {
      * {@link #FIRST_ACTION_DISTRIBUTION}과 같되 {@code analytics.excluded-anonymous-ids}에
      * 등록된 anonymous_id(내부 QA 기기 등)를 뺀 분포.
      */
-    FIRST_ACTION_DISTRIBUTION_EXCLUDING
+    FIRST_ACTION_DISTRIBUTION_EXCLUDING,
+
+    /**
+     * 시안별 투표 전환율을 "사람 수" 기준으로 잰다. 분모는 그 시안 콘텐츠를 본 서로 다른 사람 수,
+     * 분자는 그중 실제로 투표한 사람 수 — 노출 이벤트 건수를 분모로 쓰면 한 사람이 콘텐츠를 여러 번
+     * 봤을 때와 여러 사람이 한 번씩 봤을 때를 구분하지 못하는 문제를 피한다. 조회 기간 전체를
+     * 한 번에 집계한다.
+     */
+    VOTE_CONVERSION_BY_PERSON
 }

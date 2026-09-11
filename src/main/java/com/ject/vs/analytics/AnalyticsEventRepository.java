@@ -181,4 +181,53 @@ public interface AnalyticsEventRepository extends JpaRepository<AnalyticsEventRe
 
         Long getEventCount();
     }
+
+    /**
+     * 시안별 "사람 수 기준" 투표 전환율 집계. 조회 기간 전체를 한 번에 집계한다(시간 버킷 없음).
+     *
+     * <p>{@code immersive_content_viewed}(노출)를 이벤트 건수가 아니라 서로 다른 anonymous_id 수로
+     * 세고, 그중 같은 기간 {@code immersive_vote_participated}(action=VOTED)를 한 번이라도 남긴 사람
+     * 수를 분자로 삼는다. 한 사람이 콘텐츠를 몇 번을 보든 분모에는 1로만 잡힌다 — 노출 이벤트 건수를
+     * 분모로 쓰면 파워유저 한 명이 표본을 통째로 흔드는 문제(어드민 "몰입형 첫 행동 분포" 논의에서 나온
+     * 그 문제)를 여기서는 피한다.
+     *
+     * <p>Postgres 전용({@code ::jsonb})이라 로컬 H2 프로필에서는 동작하지 않는다.
+     */
+    @Query(value = """
+            WITH viewers AS (
+                SELECT DISTINCT anonymous_id,
+                       COALESCE(NULLIF(properties::jsonb ->> 'variant', ''), '(미상)') AS variant
+                FROM analytics_events
+                WHERE event = 'immersive_content_viewed'
+                  AND anonymous_id IS NOT NULL
+                  AND occurred_at >= :fromUtc
+                  AND occurred_at <  :toUtc
+            ),
+            voters AS (
+                SELECT DISTINCT anonymous_id
+                FROM analytics_events
+                WHERE event = 'immersive_vote_participated'
+                  AND properties::jsonb ->> 'action' = 'VOTED'
+                  AND anonymous_id IS NOT NULL
+                  AND occurred_at >= :fromUtc
+                  AND occurred_at <  :toUtc
+            )
+            SELECT v.variant AS variant,
+                   COUNT(DISTINCT v.anonymous_id)  AS viewerCount,
+                   COUNT(DISTINCT vt.anonymous_id) AS voterCount
+            FROM viewers v
+            LEFT JOIN voters vt ON vt.anonymous_id = v.anonymous_id
+            GROUP BY v.variant
+            """, nativeQuery = true)
+    List<VariantConversionRow> aggregateVoteConversionByPerson(
+            @Param("fromUtc") Instant fromUtc,
+            @Param("toUtc") Instant toUtc);
+
+    interface VariantConversionRow {
+        String getVariant();
+
+        Long getViewerCount();
+
+        Long getVoterCount();
+    }
 }
